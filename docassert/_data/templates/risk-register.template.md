@@ -1,6 +1,7 @@
 ---
 kind: risk-register
-id: my-risk-register
+project: PRJ-000-XXX      # the owning project's id
+id: XXX-risk-register       # <CODE>-<slug>; the project code namespaces it
 title: My Risk Register
 owner: jane.doe
 status: draft

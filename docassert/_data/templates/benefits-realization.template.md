@@ -1,6 +1,7 @@
 ---
 kind: benefits-realization
-id: my-benefits
+project: PRJ-000-XXX      # the owning project's id
+id: XXX-benefits-realization       # <CODE>-<slug>; the project code namespaces it
 title: My Benefits Realization Plan
 owner: jane.doe
 status: draft

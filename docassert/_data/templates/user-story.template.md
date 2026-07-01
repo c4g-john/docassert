@@ -1,6 +1,7 @@
 ---
 kind: user-story
-id: my-user-stories
+project: PRJ-000-XXX      # the owning project's id
+id: XXX-user-story       # <CODE>-<slug>; the project code namespaces it
 title: My User Stories
 owner: jane.doe
 status: draft

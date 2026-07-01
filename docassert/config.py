@@ -66,6 +66,24 @@ def read_consistency_config() -> dict:
     return _read_yaml(path) if path is not None else {}
 
 
+# ── templates ───────────────────────────────────────────────────────────────
+def template_path(kind: str) -> Path | None:
+    return _resolve(Path("templates") / f"{kind}.template.md",
+                    f"templates/{kind}.template.md")
+
+
+def available_kinds() -> list[str]:
+    """Every kind with criteria, local and packaged."""
+    names: set[str] = set()
+    local = Path("criteria")
+    if local.is_dir():
+        names |= {p.name.removesuffix(".criteria.yaml") for p in local.glob("*.criteria.yaml")}
+    packaged = DATA_DIR / "criteria"
+    if packaged.is_dir():
+        names |= {p.name.removesuffix(".criteria.yaml") for p in packaged.glob("*.criteria.yaml")}
+    return sorted(names)
+
+
 # ── profiles ────────────────────────────────────────────────────────────────
 def profile_path(name: str) -> Path | None:
     return _resolve(Path("profiles") / f"{name}.yaml", f"profiles/{name}.yaml")

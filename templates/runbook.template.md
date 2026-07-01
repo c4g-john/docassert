@@ -1,6 +1,7 @@
 ---
 kind: runbook
-id: my-runbook
+project: PRJ-000-XXX      # the owning project's id
+id: XXX-runbook       # <CODE>-<slug>; the project code namespaces it
 title: My Runbook
 owner: jane.doe
 status: draft

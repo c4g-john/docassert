@@ -261,6 +261,22 @@ def cmd_extract(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_new(args: argparse.Namespace) -> int:
+    """Scaffold a document of a kind from its template, with identity filled in."""
+    from . import scaffold
+    try:
+        dest, notes = scaffold.new_document(
+            args.kind, documents_dir=args.documents_dir, project=args.project,
+            code=args.code, name=args.name, out=args.out)
+    except (ValueError, FileExistsError) as exc:
+        print(f"docassert: {exc}", file=sys.stderr)
+        return 2
+    print(f"docassert: created {dest}")
+    for note in notes:
+        print(f"docassert: {note}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     from . import __version__
     parser = argparse.ArgumentParser(prog="docassert",
@@ -326,6 +342,15 @@ def main(argv: list[str] | None = None) -> int:
     ex.add_argument("file", help="Source document (.docx / .pdf / .md / .txt).")
     ex.add_argument("--out", help="Write to this path instead of stdout.")
     ex.set_defaults(func=cmd_extract)
+
+    n = sub.add_parser("new", help="Scaffold a document of a kind from its template, identity filled in.")
+    n.add_argument("kind", help="Document kind (e.g. charter, brd, project).")
+    n.add_argument("--project", help="Owning project id, PRJ-NNN-CODE (for `new project`: the id to create).")
+    n.add_argument("--code", help="For `new project`: 2–6 letter code; the sequence number is auto-picked.")
+    n.add_argument("--name", help="For `new project`: the project name.")
+    n.add_argument("--out", help="Write to this path instead of the default location.")
+    docs_dir_opt(n)
+    n.set_defaults(func=cmd_new)
 
     args = parser.parse_args(argv)
     return args.func(args)

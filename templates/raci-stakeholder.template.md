@@ -1,6 +1,7 @@
 ---
 kind: raci-stakeholder
-id: my-raci
+project: PRJ-000-XXX      # the owning project's id
+id: XXX-raci-stakeholder       # <CODE>-<slug>; the project code namespaces it
 title: My RACI / Stakeholder Register
 owner: jane.doe
 status: draft

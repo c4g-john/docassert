@@ -1,6 +1,7 @@
 ---
 kind: rollback-plan
-id: my-rollback-plan
+project: PRJ-000-XXX      # the owning project's id
+id: XXX-rollback-plan       # <CODE>-<slug>; the project code namespaces it
 title: My Rollback Plan
 owner: jane.doe
 status: draft

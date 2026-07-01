@@ -1,6 +1,7 @@
 ---
 kind: prd
-id: my-prd
+project: PRJ-000-XXX      # the owning project's id
+id: XXX-prd       # <CODE>-<slug>; the project code namespaces it
 title: My Product Requirements Document
 owner: jane.doe
 status: draft

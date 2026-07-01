@@ -1,6 +1,7 @@
 ---
 kind: hypercare-plan
-id: my-hypercare-plan
+project: PRJ-000-XXX      # the owning project's id
+id: XXX-hypercare-plan       # <CODE>-<slug>; the project code namespaces it
 title: My Hypercare Plan
 owner: jane.doe
 status: draft
