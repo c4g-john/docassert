@@ -49,6 +49,7 @@ you can customize them.
 | `docassert pages --out DIR` | Build the portfolio site (index + a page per project). |
 | `docassert projects [--out] [--check]` | Generate / verify the project registry. |
 | `docassert init [DIR]` | Scaffold the default config into a repo. |
+| `docassert extract <file>` | Extract plain text from a source `.docx` / `.pdf` / `.md` / `.txt` (the first step of doc-to-pmo conversion). Needs the `convert` extra: `pip install "docassert[convert]"`. |
 
 ## Document kinds
 
