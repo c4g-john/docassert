@@ -1,5 +1,9 @@
 # docassert
 
+[![PyPI](https://img.shields.io/pypi/v/docassert)](https://pypi.org/project/docassert/)
+[![Python](https://img.shields.io/pypi/pyversions/docassert)](https://pypi.org/project/docassert/)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
+
 **Unit testing for business documents.** Validate structured Markdown documents
 (charters, BRDs, PRDs, risk registers, …) against a configurable audit standard:
 deterministic structural checks that gate a merge, plus optional AI-graded
@@ -12,9 +16,11 @@ a vendor-neutral standard for running a PMO from version-controlled, declarative
 ## Install
 
 ```bash
-pip install "docassert @ git+https://github.com/c4g-john/docassert"   # PyPI release coming
+pipx install docassert          # recommended — installs the CLI in its own isolated env
+# or:
+pip install docassert
 # with the AI advisory extra:
-pip install "docassert[ai] @ git+https://github.com/c4g-john/docassert"
+pip install "docassert[ai]"
 ```
 
 ## Quickstart
