@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>docassert — unit testing for business documents</title>
+<meta name="description" content="Validate structured Markdown business documents against a configurable audit standard. Deterministic checks gate the merge; AI checks advise. The PMO as Code reference implementation.">
+<style>
+  :root { --bg:#0d1117; --panel:#161b22; --border:#30363d; --ink:#e6edf3;
+          --muted:#8b949e; --accent:#5b9bff; --ok:#2ea043; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink);
+         font:16px/1.6 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; }
+  main { max-width:720px; margin:0 auto; padding:72px 24px 64px; }
+  .mono { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; }
+  h1 { font-size:44px; margin:0 0 6px; letter-spacing:-.02em; }
+  .tagline { font-size:20px; color:var(--muted); margin:0 0 36px; }
+  .tagline b { color:var(--ink); font-weight:600; }
+  pre { background:var(--panel); border:1px solid var(--border); border-radius:10px;
+        padding:18px 20px; font-size:14.5px; overflow-x:auto; margin:0 0 14px; }
+  pre .c { color:var(--muted); } pre .g { color:var(--ok); }
+  .links { display:flex; flex-wrap:wrap; gap:10px; margin:28px 0 44px; }
+  .links a { display:inline-block; padding:10px 16px; border-radius:9px; text-decoration:none;
+             font-weight:600; font-size:15px; border:1px solid var(--border);
+             color:var(--ink); background:var(--panel); }
+  .links a.primary { background:var(--accent); border-color:var(--accent); color:#0a0d12; }
+  .links a:hover { border-color:var(--muted); }
+  h2 { font-size:14px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted);
+       border-bottom:1px solid var(--border); padding-bottom:8px; margin:40px 0 14px; }
+  table { width:100%; border-collapse:collapse; font-size:14px; }
+  td { padding:8px 10px; border-bottom:1px solid var(--border); vertical-align:top; }
+  td:first-child { white-space:nowrap; color:var(--accent); font-weight:600; }
+  .two { color:var(--muted); }
+  footer { color:var(--muted); font-size:13px; margin-top:48px; border-top:1px solid var(--border); padding-top:16px; }
+  footer a { color:var(--muted); }
+</style>
+</head>
+<body><main>
+  <h1>docassert</h1>
+  <p class="tagline"><b>Unit testing for business documents.</b> Charters, requirements,
+  risk registers — validated like code, on every pull request. Deterministic checks
+  gate the merge; AI checks advise. Status is derived, never typed.</p>
+
+  <pre class="mono">pipx install docassert          <span class="c"># or: pip install docassert</span>
+
+docassert new project --code AUR --name "Aurora"
+docassert new charter --project PRJ-001-AUR
+docassert validate documents/**/*.md
+<span class="g">✓ All structural checks passed — clear to merge.</span></pre>
+
+  <div class="links">
+    <a class="primary" href="https://github.com/c4g-john/docassert">GitHub</a>
+    <a href="https://pypi.org/project/docassert/">PyPI</a>
+    <a href="https://c4g-john.github.io/pmo-as-code/">The PMO as Code standard</a>
+    <a href="https://c4g-john.github.io/pmo-as-code-pipeline/">Live demo dashboard</a>
+  </div>
+
+  <h2>Commands</h2>
+  <table class="mono">
+    <tr><td>new</td><td class="two">scaffold a document from its template, identity filled in</td></tr>
+    <tr><td>validate</td><td class="two">unit-test documents against their kind's criteria</td></tr>
+    <tr><td>consistency</td><td class="two">cross-document traceability, coverage, profile completeness</td></tr>
+    <tr><td>rtm</td><td class="two">generate the requirements traceability matrix</td></tr>
+    <tr><td>status</td><td class="two">derive per-project RAG from the documents</td></tr>
+    <tr><td>pages</td><td class="two">build a portfolio dashboard + a page per project</td></tr>
+    <tr><td>extract</td><td class="two">pull plain text from .docx / .pdf for conversion</td></tr>
+    <tr><td>init</td><td class="two">scaffold the default criteria / schemas / profiles into a repo</td></tr>
+  </table>
+
+  <footer>Apache-2.0 · © 2026 C4G Enterprises Inc. ·
+    <a href="https://github.com/c4g-john/docassert">github.com/c4g-john/docassert</a></footer>
+</main></body></html>
