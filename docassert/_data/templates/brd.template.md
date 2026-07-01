@@ -1,6 +1,7 @@
 ---
 kind: brd
-id: my-brd
+project: PRJ-000-XXX      # the owning project's id
+id: XXX-brd       # <CODE>-<slug>; the project code namespaces it
 title: My Business Requirements Document
 owner: jane.doe
 status: draft   # draft | proposed | approved | baselined

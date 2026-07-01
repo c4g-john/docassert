@@ -1,6 +1,7 @@
 ---
 kind: frnfr
-id: my-frnfr
+project: PRJ-000-XXX      # the owning project's id
+id: XXX-frnfr       # <CODE>-<slug>; the project code namespaces it
 title: My Functional & Non-Functional Requirements
 owner: jane.doe
 status: draft

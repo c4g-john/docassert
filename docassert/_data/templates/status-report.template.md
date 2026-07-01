@@ -1,6 +1,7 @@
 ---
 kind: status-report
-id: my-status-2026-07-01
+project: PRJ-000-XXX      # the owning project's id
+id: XXX-status-2026-07-01       # <CODE>-<slug>; the project code namespaces it
 title: My Project — Status Report
 owner: jane.doe
 period: 2026-07-01

@@ -1,6 +1,7 @@
 ---
 kind: post-implementation-review
-id: my-pir
+project: PRJ-000-XXX      # the owning project's id
+id: XXX-post-implementation-review       # <CODE>-<slug>; the project code namespaces it
 title: My Post-Implementation Review
 owner: jane.doe
 status: draft

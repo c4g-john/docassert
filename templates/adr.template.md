@@ -1,6 +1,7 @@
 ---
 kind: adr
-id: my-adr-log
+project: PRJ-000-XXX      # the owning project's id
+id: XXX-adr       # <CODE>-<slug>; the project code namespaces it
 title: My Architecture Decision Log
 owner: jane.doe
 status: draft

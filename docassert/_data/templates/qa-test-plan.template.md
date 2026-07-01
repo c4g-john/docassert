@@ -1,6 +1,7 @@
 ---
 kind: qa-test-plan
-id: my-test-plan
+project: PRJ-000-XXX      # the owning project's id
+id: XXX-qa-test-plan       # <CODE>-<slug>; the project code namespaces it
 title: My QA / Test Plan
 owner: jane.doe
 status: draft

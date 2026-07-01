@@ -1,6 +1,7 @@
 ---
 kind: data-migration-plan
-id: my-data-migration
+project: PRJ-000-XXX      # the owning project's id
+id: XXX-data-migration-plan       # <CODE>-<slug>; the project code namespaces it
 title: My Data Migration Plan
 owner: jane.doe
 status: draft

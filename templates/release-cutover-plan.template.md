@@ -1,6 +1,7 @@
 ---
 kind: release-cutover-plan
-id: my-cutover-plan
+project: PRJ-000-XXX      # the owning project's id
+id: XXX-release-cutover-plan       # <CODE>-<slug>; the project code namespaces it
 title: My Release / Cutover Plan
 owner: jane.doe
 status: draft

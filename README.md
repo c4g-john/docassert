@@ -26,7 +26,8 @@ pip install "docassert[ai]"
 ## Quickstart
 
 ```bash
-docassert init                        # scaffold criteria/schema/profiles/templates into your repo
+docassert new project --code AUR --name "Aurora"   # anchor a project (auto-numbered id)
+docassert new charter --project PRJ-001-AUR        # scaffold a charter into it
 docassert validate documents/**/*.md  # unit-test your documents
 docassert consistency                 # cross-document traceability + profile completeness
 docassert status --index              # derived RAG per project
@@ -48,6 +49,7 @@ you can customize them.
 | `docassert status [--project ID] [--index]` | Derived project status (md / json / html). |
 | `docassert pages --out DIR` | Build the portfolio site (index + a page per project). |
 | `docassert projects [--out] [--check]` | Generate / verify the project registry. |
+| `docassert new <kind> --project ID` | Scaffold a document from its template with identity filled in (`new project --code XYZ` auto-numbers the id); suggests the next free item ids. |
 | `docassert init [DIR]` | Scaffold the default config into a repo. |
 | `docassert extract <file>` | Extract plain text from a source `.docx` / `.pdf` / `.md` / `.txt` (the first step of doc-to-pmo conversion). Needs the `convert` extra: `pip install "docassert[convert]"`. |
 

@@ -1,6 +1,7 @@
 ---
 kind: business-case
-id: my-business-case
+project: PRJ-000-XXX      # the owning project's id
+id: XXX-business-case       # <CODE>-<slug>; the project code namespaces it
 title: My Business Case
 sponsor: jane.doe
 status: draft

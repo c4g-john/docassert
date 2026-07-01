@@ -1,6 +1,7 @@
 ---
 kind: test-cases
-id: my-test-cases
+project: PRJ-000-XXX      # the owning project's id
+id: XXX-test-cases       # <CODE>-<slug>; the project code namespaces it
 title: My Test Cases
 owner: jane.doe
 status: draft

@@ -1,6 +1,7 @@
 ---
 kind: charter
-id: my-project            # lowercase, hyphenated, unique across documents/
+project: PRJ-000-XXX      # the owning project's id
+id: XXX-charter       # <CODE>-<slug>; the project code namespaces it
 title: My Project Charter
 sponsor: jane.doe         # the accountable individual, not a team
 budget:
