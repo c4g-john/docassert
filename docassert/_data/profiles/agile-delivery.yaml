@@ -1,0 +1,20 @@
+# Profile: agile-delivery
+#
+# User-story-centric. Stories carry acceptance criteria, every story traces to a
+# product requirement, and every acceptance criterion needs a test case. For
+# teams working in stories, not specs.
+name: agile-delivery
+description: >
+  Story-led delivery: charter, product requirements, user stories, and tests.
+
+enforce_when: active
+
+expects:
+  required:
+    - charter
+    - prd
+    - user-story
+    - test-cases
+  recommended:
+    - brd
+    - risk-register

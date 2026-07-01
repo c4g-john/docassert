@@ -1,0 +1,45 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RACI / Stakeholder Register frontmatter",
+  "type": "object",
+  "required": [
+    "kind",
+    "id",
+    "project",
+    "title",
+    "owner",
+    "status"
+  ],
+  "additionalProperties": true,
+  "properties": {
+    "kind": {
+      "const": "raci-stakeholder"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Z]{2,6}-[a-z0-9][a-z0-9-]*$",
+      "description": "Stable id, <CODE>-<slug> (e.g. AUR-brd). The CODE namespaces it to the owning project. Unique across documents/."
+    },
+    "title": {
+      "type": "string",
+      "minLength": 3
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 2
+    },
+    "status": {
+      "enum": [
+        "draft",
+        "proposed",
+        "approved",
+        "baselined"
+      ]
+    },
+    "project": {
+      "type": "string",
+      "pattern": "^PRJ-\\d{3,}-[A-Z]{2,6}$",
+      "description": "Owning project's canonical id, PRJ-NNN-CODE (e.g. PRJ-001-AUR)."
+    }
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://pmo-as-code/schema/project.schema.json",
+  "title": "Project anchor frontmatter",
+  "type": "object",
+  "required": ["kind", "id", "code", "name", "sponsor", "status"],
+  "additionalProperties": true,
+  "properties": {
+    "kind": { "const": "project" },
+    "id": {
+      "type": "string",
+      "pattern": "^PRJ-\\d{3,}-[A-Z]{2,6}$",
+      "description": "Canonical project id, PRJ-NNN-CODE (e.g. PRJ-001-AUR). Unique across all projects."
+    },
+    "code": {
+      "type": "string",
+      "pattern": "^[A-Z]{2,6}$",
+      "description": "Short mnemonic that namespaces this project's document ids and item ids (e.g. AUR). Matches the id tail."
+    },
+    "name": { "type": "string", "minLength": 3 },
+    "sponsor": {
+      "type": "string",
+      "minLength": 2,
+      "description": "The accountable individual. A name or handle, not a team."
+    },
+    "status": { "enum": ["proposed", "active", "on-hold", "closed"] },
+    "profile": {
+      "type": "string",
+      "description": "Optional. Names a profiles/<name>.yaml that defines this project's expected document set (required/recommended kinds)."
+    }
+  }
+}

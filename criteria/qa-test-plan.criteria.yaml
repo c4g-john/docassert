@@ -1,0 +1,27 @@
+# Audit criteria for the QA / Test Plan kind.
+kind: qa-test-plan
+
+required_sections:
+  - Scope
+  - Test Approach
+  - Environments
+  - Entry Criteria
+  - Exit Criteria
+
+checks:
+  - id: frontmatter-schema
+    type: structural
+    blocking: true
+    description: Frontmatter is valid against schema/qa-test-plan.schema.json.
+  - id: required-sections
+    type: structural
+    blocking: true
+    description: Every required section is present and non-empty.
+  - id: measurable-exit-criteria
+    type: structural
+    blocking: true
+    description: Every exit criterion states a measurable threshold.
+  - id: unique-id
+    type: structural
+    blocking: true
+    description: The document id is unique across documents/.

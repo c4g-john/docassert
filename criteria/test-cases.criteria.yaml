@@ -1,0 +1,28 @@
+# Audit criteria for the Test Cases kind.
+kind: test-cases
+
+required_sections:
+  - Overview
+  - Test Cases
+
+item_sections:
+  - section: Test Cases
+    prefix: TC
+
+checks:
+  - id: frontmatter-schema
+    type: structural
+    blocking: true
+    description: Frontmatter is valid against schema/test-cases.schema.json.
+  - id: required-sections
+    type: structural
+    blocking: true
+    description: Every required section is present and non-empty.
+  - id: items-well-formed
+    type: structural
+    blocking: true
+    description: Every test case is a valid **TC-###** item that tests an acceptance criterion.
+  - id: unique-id
+    type: structural
+    blocking: true
+    description: The document id is unique across documents/.

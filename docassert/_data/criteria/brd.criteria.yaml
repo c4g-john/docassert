@@ -1,0 +1,30 @@
+# Audit criteria for the Business Requirements Document (BRD) kind.
+kind: brd
+
+required_sections:
+  - Purpose
+  - Business Requirements
+  - Out of Scope
+
+# Sections whose bullets are traceable items.
+item_sections:
+  - section: Business Requirements
+    prefix: BR
+
+checks:
+  - id: frontmatter-schema
+    type: structural
+    blocking: true
+    description: Frontmatter is valid against schema/brd.schema.json.
+  - id: required-sections
+    type: structural
+    blocking: true
+    description: Every required section is present and non-empty.
+  - id: items-well-formed
+    type: structural
+    blocking: true
+    description: Every Business Requirement is a valid **BR-###** item.
+  - id: unique-id
+    type: structural
+    blocking: true
+    description: The document id is unique across documents/.

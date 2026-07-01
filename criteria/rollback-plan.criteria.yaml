@@ -1,0 +1,29 @@
+# Audit criteria for the Rollback Plan kind.
+kind: rollback-plan
+
+required_sections:
+  - Overview
+  - Trigger Conditions
+  - Rollback Steps
+  - Verification
+
+steps_sections:
+  - Rollback Steps
+
+checks:
+  - id: frontmatter-schema
+    type: structural
+    blocking: true
+    description: Frontmatter is valid against schema/rollback-plan.schema.json.
+  - id: required-sections
+    type: structural
+    blocking: true
+    description: Every required section is present and non-empty.
+  - id: numbered-steps
+    type: structural
+    blocking: true
+    description: Rollback Steps is an ordered list of at least two numbered steps.
+  - id: unique-id
+    type: structural
+    blocking: true
+    description: The document id is unique across documents/.

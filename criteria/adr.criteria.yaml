@@ -1,0 +1,36 @@
+# Audit criteria for the Architecture Decision Record (ADR) kind.
+#
+# Modeled as a decision log: one document holds many **ADR-###** decision items,
+# each optionally affecting a requirement. (Distinct from the portfolio-level
+# "Decision" concept.)
+kind: adr
+
+required_sections:
+  - Overview
+  - Decisions
+
+item_sections:
+  - section: Decisions
+    prefix: ADR
+
+checks:
+  - id: frontmatter-schema
+    type: structural
+    blocking: true
+    description: Frontmatter is valid against schema/adr.schema.json.
+  - id: required-sections
+    type: structural
+    blocking: true
+    description: Every required section is present and non-empty.
+  - id: items-well-formed
+    type: structural
+    blocking: true
+    description: Every decision is a valid **ADR-###** item.
+  - id: adr-items-have-status
+    type: structural
+    blocking: true
+    description: Every decision declares a valid Status (proposed | accepted | superseded | deprecated | rejected).
+  - id: unique-id
+    type: structural
+    blocking: true
+    description: The document id is unique across documents/.

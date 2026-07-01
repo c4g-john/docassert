@@ -1,0 +1,23 @@
+# Audit criteria for the Business Case kind.
+kind: business-case
+
+required_sections:
+  - Problem Statement
+  - Options Considered
+  - Recommendation
+  - Costs
+  - Benefits
+
+checks:
+  - id: frontmatter-schema
+    type: structural
+    blocking: true
+    description: Frontmatter is valid against schema/business-case.schema.json.
+  - id: required-sections
+    type: structural
+    blocking: true
+    description: Every required section is present and non-empty.
+  - id: unique-id
+    type: structural
+    blocking: true
+    description: The document id is unique across documents/.

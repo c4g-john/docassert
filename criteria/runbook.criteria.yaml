@@ -1,0 +1,30 @@
+# Audit criteria for the Runbook kind.
+kind: runbook
+
+required_sections:
+  - Overview
+  - Prerequisites
+  - Procedures
+  - Monitoring
+  - Escalation
+
+steps_sections:
+  - Procedures
+
+checks:
+  - id: frontmatter-schema
+    type: structural
+    blocking: true
+    description: Frontmatter is valid against schema/runbook.schema.json.
+  - id: required-sections
+    type: structural
+    blocking: true
+    description: Every required section is present and non-empty.
+  - id: numbered-steps
+    type: structural
+    blocking: true
+    description: Procedures is an ordered list of at least two numbered steps.
+  - id: unique-id
+    type: structural
+    blocking: true
+    description: The document id is unique across documents/.

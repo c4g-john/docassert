@@ -1,0 +1,24 @@
+name: quality
+
+# Lints the codebase and runs docassert's own unit tests on every PR and push.
+# (The audit / consistency workflows exercise the documents; this exercises the
+# tool itself.)
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install docassert with dev tools
+        run: pip install -e ".[dev]"
+      - name: Ruff (lint)
+        run: ruff check .
+      - name: Pytest (unit tests)
+        run: pytest -q

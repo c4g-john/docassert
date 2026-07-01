@@ -1,0 +1,51 @@
+# Cross-document traceability rules.
+#
+# The chain: BR (business req) ◀ PR (product req) ◀ FR/NFR (spec)
+#            PR ◀ AC (acceptance criterion) ◀ TC (test case)
+#
+# Broken references are ALWAYS blocking. The rules below (required links and
+# coverage) block only when the owning document is `status: approved`, so
+# work-in-progress is never punished.
+
+# Each downstream item prefix must declare at least one target via this
+# relation (else it's an orphan).
+required_links:
+  PR: traces        # a product requirement must trace to a business requirement
+  FR: traces        # a functional requirement must trace to a product requirement
+  NFR: traces       # a non-functional requirement must trace to a product requirement
+  US: traces        # a user story must trace to a product requirement
+  AC: verifies      # an acceptance criterion must verify a requirement
+  TC: tests         # a test case must test an acceptance criterion
+
+# Every parent item (by prefix) must be covered by >=1 child of `by_prefix`
+# linking to it via `relation`.
+coverage:
+  - parent: BR
+    relation: traces
+    by_prefix: PR
+    label: business requirement covered by a product requirement
+  - parent: PR
+    relation: verifies
+    by_prefix: AC
+    label: product requirement covered by an acceptance criterion
+  - parent: AC
+    relation: tests
+    by_prefix: TC
+    label: acceptance criterion covered by a test case
+
+# Advisory AI alignment: for each relation, judge whether the child genuinely
+# fulfils the parent it links to. Never blocks.
+alignment:
+  - relation: traces
+    prompt: >
+      Judge whether the CHILD requirement genuinely refines or implements the
+      PARENT requirement it traces to, rather than being merely topically
+      related. Penalise links that don't actually follow from the parent.
+  - relation: verifies
+    prompt: >
+      Judge whether the acceptance criterion actually verifies the requirement
+      it targets: testable, and covering the requirement's intent.
+  - relation: tests
+    prompt: >
+      Judge whether the test case actually exercises the acceptance criterion
+      it targets.

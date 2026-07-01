@@ -1,0 +1,27 @@
+# Audit criteria for the Hypercare Plan kind.
+kind: hypercare-plan
+
+required_sections:
+  - Overview
+  - Support Window
+  - Severity Levels
+  - Escalation
+  - Exit Criteria
+
+checks:
+  - id: frontmatter-schema
+    type: structural
+    blocking: true
+    description: Frontmatter is valid against schema/hypercare-plan.schema.json.
+  - id: required-sections
+    type: structural
+    blocking: true
+    description: Every required section is present and non-empty.
+  - id: measurable-exit-criteria
+    type: structural
+    blocking: true
+    description: Every hypercare exit criterion states a measurable threshold.
+  - id: unique-id
+    type: structural
+    blocking: true
+    description: The document id is unique across documents/.

@@ -1,0 +1,31 @@
+# Audit criteria for the Product Requirements Document (PRD) kind.
+kind: prd
+
+required_sections:
+  - Overview
+  - Product Requirements
+  - Acceptance Criteria
+
+item_sections:
+  - section: Product Requirements
+    prefix: PR
+  - section: Acceptance Criteria
+    prefix: AC
+
+checks:
+  - id: frontmatter-schema
+    type: structural
+    blocking: true
+    description: Frontmatter is valid against schema/prd.schema.json.
+  - id: required-sections
+    type: structural
+    blocking: true
+    description: Every required section is present and non-empty.
+  - id: items-well-formed
+    type: structural
+    blocking: true
+    description: Product Requirements are **PR-###** items; Acceptance Criteria are **AC-###** items.
+  - id: unique-id
+    type: structural
+    blocking: true
+    description: The document id is unique across documents/.

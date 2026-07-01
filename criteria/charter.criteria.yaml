@@ -1,0 +1,73 @@
+# Audit criteria for the Charter document kind.
+#
+# This file is the configurable contract for what "passing" means. Edit it to
+# tune your organisation's standard without touching the validator code.
+#
+#   type:     structural  -> deterministic Python check (always reliable)
+#             semantic     -> AI-graded rubric check (Anthropic API)
+#   blocking: true         -> a failure fails CI and blocks the PR merge
+#             false        -> a failure is reported as advisory only
+#
+# Policy (confirmed): structural checks block; semantic checks advise.
+
+kind: charter
+
+required_sections:
+  - Objective
+  - Success Criteria
+  - Scope
+  - Milestones
+  - Risks
+  - Approval
+
+checks:
+  - id: frontmatter-schema
+    type: structural
+    blocking: true
+    description: Frontmatter is present and valid against schema/charter.schema.json.
+
+  - id: required-sections
+    type: structural
+    blocking: true
+    description: Every required section is present and non-empty.
+
+  - id: measurable-success-criteria
+    type: structural
+    blocking: true
+    description: Every Success Criteria bullet states a measurable threshold (number, %, currency, or date).
+
+  - id: risks-have-owner-and-mitigation
+    type: structural
+    blocking: true
+    description: Every Risks bullet names an Owner and a Mitigation.
+
+  - id: dates-consistent
+    type: structural
+    blocking: true
+    description: Dates parse and the target date is on or after the created date.
+
+  - id: unique-id
+    type: structural
+    blocking: true
+    description: The document id is unique across documents/.
+
+  - id: objective-is-specific
+    type: semantic
+    blocking: false
+    pass_threshold: 0.7
+    prompt: >
+      You are auditing a project charter's Objective section. Judge whether it
+      states a specific, outcome-oriented goal a reader could hold the team
+      accountable to — not a vague aspiration or a restatement of the project
+      name. Reward concrete outcomes and measurable intent; penalise generic
+      filler ("drive synergies", "enhance capabilities").
+
+  - id: success-criteria-verifiable
+    type: semantic
+    blocking: false
+    pass_threshold: 0.7
+    prompt: >
+      You are auditing a project charter's Success Criteria. Judge whether each
+      criterion could be objectively verified by an independent third party
+      after the fact — i.e. it names a metric and a threshold, not a feeling.
+      Penalise criteria that are subjective or unmeasurable.

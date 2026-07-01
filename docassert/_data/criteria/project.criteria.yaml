@@ -1,0 +1,32 @@
+# Audit criteria for the Project anchor kind.
+#
+# A `project.md` sits at the root of each documents/PRJ-NNN-CODE/ folder and
+# declares that project's canonical identity. The registry (projects.yaml) and
+# the per-project pages are derived from these anchors.
+
+kind: project
+
+required_sections:
+  - Overview
+  - Scope
+
+checks:
+  - id: frontmatter-schema
+    type: structural
+    blocking: true
+    description: Frontmatter is present and valid against schema/project.schema.json.
+
+  - id: project-id-format
+    type: structural
+    blocking: true
+    description: The id is PRJ-NNN-CODE and its CODE tail equals the `code` field.
+
+  - id: required-sections
+    type: structural
+    blocking: true
+    description: Every required section is present and non-empty.
+
+  - id: unique-id
+    type: structural
+    blocking: true
+    description: The project id is unique across documents/.

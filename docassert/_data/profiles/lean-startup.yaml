@@ -1,0 +1,19 @@
+# Profile: lean-startup
+#
+# A handful of kinds. Coverage stays advisory until you grow, so a small team is
+# never blocked for unfinished downstream docs. Start here.
+name: lean-startup
+description: >
+  The minimum spine: a charter, requirements, and tests. For a small team that
+  wants the gate without the ceremony.
+
+enforce_when: active
+
+expects:
+  required:
+    - charter
+    - brd
+    - prd
+    - test-cases
+  recommended:
+    - risk-register

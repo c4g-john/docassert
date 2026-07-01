@@ -1,0 +1,30 @@
+# Audit criteria for the Benefits Realization kind.
+kind: benefits-realization
+
+required_sections:
+  - Overview
+  - Benefits
+  - Measurement
+  - Realized Value
+
+# Bullets in these sections must state a measurable threshold.
+measurable_sections:
+  - Benefits
+
+checks:
+  - id: frontmatter-schema
+    type: structural
+    blocking: true
+    description: Frontmatter is valid against schema/benefits-realization.schema.json.
+  - id: required-sections
+    type: structural
+    blocking: true
+    description: Every required section is present and non-empty.
+  - id: measurable-items
+    type: structural
+    blocking: true
+    description: Every benefit states a measurable target.
+  - id: unique-id
+    type: structural
+    blocking: true
+    description: The document id is unique across documents/.

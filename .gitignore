@@ -1,0 +1,20 @@
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# docassert AI-grade cache
+.docassert-cache/
+
+# CI artifacts (generated, not committed)
+comment.md
+report.xml
+consistency.md
+consistency.xml
+RTM.md
+
+# macOS
+.DS_Store
+status-comment.md

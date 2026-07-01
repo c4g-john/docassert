@@ -1,0 +1,31 @@
+# Profile: regulated-industry
+#
+# The expected document set for a project on this profile. `required` kinds must
+# exist and be complete (present + approved/baselined + passing audit); a missing
+# required kind blocks CI once the project reaches `enforce_when`. `recommended`
+# kinds are surfaced as gaps on the project page but never block.
+name: regulated-industry
+description: >
+  Strictest set. For finance, healthcare, or government — the full governance
+  spine, from business case through benefits realization.
+
+# Completeness blocks the merge only once the project's status reaches this
+# lifecycle stage (proposed projects show gaps as advisory, never blocking).
+enforce_when: active
+
+expects:
+  required:
+    - charter
+    - business-case
+    - brd
+    - prd
+    - frnfr
+    - test-cases
+    - risk-register
+    - raci-stakeholder
+    - qa-test-plan
+  recommended:
+    - adr
+    - runbook
+    - status-report
+    - benefits-realization

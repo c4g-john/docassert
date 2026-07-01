@@ -1,0 +1,32 @@
+# Audit criteria for the Risk Register kind.
+kind: risk-register
+
+required_sections:
+  - Overview
+  - Risks
+
+item_sections:
+  - section: Risks
+    prefix: RISK
+
+checks:
+  - id: frontmatter-schema
+    type: structural
+    blocking: true
+    description: Frontmatter is valid against schema/risk-register.schema.json.
+  - id: required-sections
+    type: structural
+    blocking: true
+    description: Every required section is present and non-empty.
+  - id: items-well-formed
+    type: structural
+    blocking: true
+    description: Every risk is a valid **RISK-###** item.
+  - id: risk-items-complete
+    type: structural
+    blocking: true
+    description: Every risk states a Probability, Impact, Owner, and Response.
+  - id: unique-id
+    type: structural
+    blocking: true
+    description: The document id is unique across documents/.

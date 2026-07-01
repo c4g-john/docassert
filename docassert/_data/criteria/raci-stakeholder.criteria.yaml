@@ -1,0 +1,24 @@
+# Audit criteria for the RACI / Stakeholder Register kind.
+kind: raci-stakeholder
+
+required_sections:
+  - Stakeholders
+  - RACI Matrix
+
+checks:
+  - id: frontmatter-schema
+    type: structural
+    blocking: true
+    description: Frontmatter is valid against schema/raci-stakeholder.schema.json.
+  - id: required-sections
+    type: structural
+    blocking: true
+    description: Every required section is present and non-empty.
+  - id: raci-one-accountable
+    type: structural
+    blocking: true
+    description: Every activity in the RACI Matrix has exactly one Accountable (A) role.
+  - id: unique-id
+    type: structural
+    blocking: true
+    description: The document id is unique across documents/.

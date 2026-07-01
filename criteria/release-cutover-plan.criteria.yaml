@@ -1,0 +1,30 @@
+# Audit criteria for the Release / Cutover Plan kind.
+kind: release-cutover-plan
+
+required_sections:
+  - Overview
+  - Pre-Cutover Checklist
+  - Cutover Steps
+  - Verification
+  - Rollback Trigger
+
+steps_sections:
+  - Cutover Steps
+
+checks:
+  - id: frontmatter-schema
+    type: structural
+    blocking: true
+    description: Frontmatter is valid against schema/release-cutover-plan.schema.json.
+  - id: required-sections
+    type: structural
+    blocking: true
+    description: Every required section is present and non-empty.
+  - id: numbered-steps
+    type: structural
+    blocking: true
+    description: Cutover Steps is an ordered list of at least two numbered steps.
+  - id: unique-id
+    type: structural
+    blocking: true
+    description: The document id is unique across documents/.

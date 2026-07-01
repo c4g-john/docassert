@@ -1,0 +1,32 @@
+# Audit criteria for the User Stories kind.
+kind: user-story
+
+required_sections:
+  - Overview
+  - User Stories
+
+item_sections:
+  - section: User Stories
+    prefix: US
+
+checks:
+  - id: frontmatter-schema
+    type: structural
+    blocking: true
+    description: Frontmatter is valid against schema/user-story.schema.json.
+  - id: required-sections
+    type: structural
+    blocking: true
+    description: Every required section is present and non-empty.
+  - id: items-well-formed
+    type: structural
+    blocking: true
+    description: Every story is a valid **US-###** item.
+  - id: story-format
+    type: structural
+    blocking: true
+    description: Every story follows "As a … I want … so that …".
+  - id: unique-id
+    type: structural
+    blocking: true
+    description: The document id is unique across documents/.

@@ -1,0 +1,28 @@
+# Audit criteria for the Data Migration Plan kind.
+kind: data-migration-plan
+
+required_sections:
+  - Scope
+  - Source Systems
+  - Field Mapping
+  - Validation
+  - Cutover
+  - Rollback
+
+checks:
+  - id: frontmatter-schema
+    type: structural
+    blocking: true
+    description: Frontmatter is valid against schema/data-migration-plan.schema.json.
+  - id: required-sections
+    type: structural
+    blocking: true
+    description: Every required section is present and non-empty.
+  - id: mapping-table
+    type: structural
+    blocking: true
+    description: The Field Mapping section contains a mapping table.
+  - id: unique-id
+    type: structural
+    blocking: true
+    description: The document id is unique across documents/.
