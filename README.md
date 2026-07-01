@@ -42,7 +42,7 @@ you can customize them.
 
 | Command | What it does |
 |---|---|
-| `docassert validate <globs>` | Validate documents against their kind's criteria. Exit code = number of blocking failures. |
+| `docassert validate <globs>` | Validate documents against their kind's criteria. Exit code = number of blocking failures (capped at 125). |
 | `docassert consistency` | Cross-document checks: referential integrity, coverage, required links, profile completeness. |
 | `docassert rtm [--project ID]` | Requirements traceability matrix (Markdown or CSV). |
 | `docassert status [--project ID] [--index]` | Derived project status (md / json / html). |
@@ -50,6 +50,10 @@ you can customize them.
 | `docassert projects [--out] [--check]` | Generate / verify the project registry. |
 | `docassert init [DIR]` | Scaffold the default config into a repo. |
 | `docassert extract <file>` | Extract plain text from a source `.docx` / `.pdf` / `.md` / `.txt` (the first step of doc-to-pmo conversion). Needs the `convert` extra: `pip install "docassert[convert]"`. |
+
+Every document-reading command accepts `--documents-dir` (default `documents/`).
+AI alignment grades at most `alignment_limit` links per run (default 25; set it
+in `consistency.yaml`, `0` = no cap) so API cost stays bounded on large graphs.
 
 ## Document kinds
 

@@ -35,6 +35,10 @@ coverage:
 
 # Advisory AI alignment: for each relation, judge whether the child genuinely
 # fulfils the parent it links to. Never blocks.
+# Each graded link costs one API call; `alignment_limit` caps calls per run
+# (0 = no cap).
+alignment_limit: 25
+
 alignment:
   - relation: traces
     prompt: >
