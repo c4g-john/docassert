@@ -17,7 +17,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install docassert with dev tools
-        run: pip install -e ".[dev]"
+        run: pip install -e ".[dev,convert]"   # convert = python-docx/pypdf, exercises `extract`
       - name: Ruff (lint)
         run: ruff check .
       - name: Pytest (unit tests)

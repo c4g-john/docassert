@@ -232,6 +232,23 @@ def cmd_init(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_extract(args: argparse.Namespace) -> int:
+    """Extract plain text from a source document (.docx/.pdf/.md/.txt) — the
+    deterministic first step of doc-to-pmo conversion."""
+    from . import extract as extract_mod
+    try:
+        text = extract_mod.extract(args.file)
+    except (FileNotFoundError, ValueError, ImportError) as exc:
+        print(f"docassert: {exc}", file=sys.stderr)
+        return 2
+    if args.out:
+        Path(args.out).write_text(text, encoding="utf-8")
+        print(f"docassert: wrote {args.out} ({len(text)} chars)")
+    else:
+        sys.stdout.write(text)
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     from . import __version__
     parser = argparse.ArgumentParser(prog="docassert",
@@ -282,6 +299,11 @@ def main(argv: list[str] | None = None) -> int:
     ini = sub.add_parser("init", help="Scaffold the default criteria/schema/profiles/templates into a repo.")
     ini.add_argument("dir", nargs="?", default=".", help="Target directory (default: current).")
     ini.set_defaults(func=cmd_init)
+
+    ex = sub.add_parser("extract", help="Extract plain text from a source doc (.docx/.pdf/.md/.txt) for conversion.")
+    ex.add_argument("file", help="Source document (.docx / .pdf / .md / .txt).")
+    ex.add_argument("--out", help="Write to this path instead of stdout.")
+    ex.set_defaults(func=cmd_extract)
 
     args = parser.parse_args(argv)
     return args.func(args)
