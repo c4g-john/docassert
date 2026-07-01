@@ -3,8 +3,10 @@
     docassert validate documents/charters/aurora.md
     docassert validate documents/**/*.md --junit out.xml --markdown comment.md
 
-Exit code = number of BLOCKING (structural) failures. Advisory (AI) failures
-never affect the exit code, so CI is gated only by deterministic checks.
+Exit code = number of BLOCKING (structural) failures, capped at 125 so large
+counts can't wrap around the 8-bit exit-status space (256 failures must never
+read as success). Advisory (AI) failures never affect the exit code, so CI is
+gated only by deterministic checks.
 """
 from __future__ import annotations
 
@@ -23,15 +25,24 @@ from .models import CheckResult
 from .semantic import run_semantic
 from .structural import run_structural
 
-# The user's documents live here; criteria / schema / consistency.yaml / profiles
-# resolve via `config` (local override → packaged default).
-DOCUMENTS_DIR = Path("documents")
+# Default documents location; every document-reading command accepts
+# --documents-dir to override it. Criteria / schema / consistency.yaml /
+# profiles resolve via `config` (local override → packaged default).
+DEFAULT_DOCUMENTS_DIR = "documents"
+
+# POSIX exit statuses are 8-bit; 126+ carry shell meanings. Cap so a failure
+# count can never wrap to 0.
+_EXIT_CAP = 125
 
 
-def _build_id_index() -> dict[str, list[str]]:
-    """Map document id -> [paths] across all documents/, for uniqueness checks."""
+def _capped(failures: int) -> int:
+    return min(failures, _EXIT_CAP)
+
+
+def _build_id_index(documents_dir: Path) -> dict[str, list[str]]:
+    """Map document id -> [paths] across the documents tree, for uniqueness checks."""
     index: dict[str, list[str]] = defaultdict(list)
-    for path in DOCUMENTS_DIR.rglob("*.md"):
+    for path in documents_dir.rglob("*.md"):
         try:
             doc = load(path)
         except ValueError:
@@ -86,7 +97,7 @@ def cmd_validate(args: argparse.Namespace) -> int:
         print("docassert: no markdown documents matched.", file=sys.stderr)
         return 0
 
-    id_index = _build_id_index()
+    id_index = _build_id_index(Path(args.documents_dir))
     results_by_doc: dict[str, list[CheckResult]] = {}
     for path in files:
         try:
@@ -106,12 +117,12 @@ def cmd_validate(args: argparse.Namespace) -> int:
     if args.markdown:
         Path(args.markdown).write_text(report.markdown(results_by_doc))
 
-    return sum(1 for rs in results_by_doc.values()
-               for r in rs if r.is_blocking_failure)
+    return _capped(sum(1 for rs in results_by_doc.values()
+                       for r in rs if r.is_blocking_failure))
 
 
 def cmd_consistency(args: argparse.Namespace) -> int:
-    results = run_consistency(DOCUMENTS_DIR, with_semantic=not args.no_semantic)
+    results = run_consistency(args.documents_dir, with_semantic=not args.no_semantic)
     results_by_doc = {"consistency (cross-document)": results}
 
     print(report.console(results_by_doc))
@@ -123,7 +134,7 @@ def cmd_consistency(args: argparse.Namespace) -> int:
         Path(args.markdown).write_text(
             report.markdown(results_by_doc, title="docassert consistency"))
 
-    return sum(1 for r in results if r.is_blocking_failure)
+    return _capped(sum(1 for r in results if r.is_blocking_failure))
 
 
 def _project_code(value: str | None) -> str | None:
@@ -132,7 +143,7 @@ def _project_code(value: str | None) -> str | None:
 
 
 def cmd_rtm(args: argparse.Namespace) -> int:
-    graph = build_graph(DOCUMENTS_DIR)
+    graph = build_graph(args.documents_dir)
     code = _project_code(args.project)
     text = rtm.render_csv(graph, code) if args.csv else rtm.render_markdown(graph, code)
     if args.out:
@@ -145,7 +156,7 @@ def cmd_rtm(args: argparse.Namespace) -> int:
 
 def cmd_projects(args: argparse.Namespace) -> int:
     from . import projects as proj
-    plist = proj.load_projects(DOCUMENTS_DIR)
+    plist = proj.load_projects(args.documents_dir)
     issues = proj.registry_issues(plist)
     for issue in issues:
         print(f"docassert: {issue}", file=sys.stderr)
@@ -172,7 +183,7 @@ def cmd_projects(args: argparse.Namespace) -> int:
 def cmd_status(args: argparse.Namespace) -> int:
     from . import status as status_mod
     if args.index:
-        index = status_mod.build_index(DOCUMENTS_DIR)
+        index = status_mod.build_index(args.documents_dir)
         if args.format == "json":
             text = status_mod.render_json(index)
         elif args.format == "html":
@@ -181,7 +192,7 @@ def cmd_status(args: argparse.Namespace) -> int:
             text = status_mod.render_index_markdown(index)
         tag = index["overall"]["rag"]
     else:
-        model = status_mod.build_status(DOCUMENTS_DIR, project=args.project)
+        model = status_mod.build_status(args.documents_dir, project=args.project)
         if args.project and not model["documents"]:
             print(f"docassert: no documents for project {args.project!r}", file=sys.stderr)
             return 2
@@ -206,16 +217,17 @@ def cmd_pages(args: argparse.Namespace) -> int:
     from . import status as status_mod
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
+    docs_dir = args.documents_dir
 
-    index = status_mod.build_index(DOCUMENTS_DIR)
+    index = status_mod.build_index(docs_dir)
     (out / "index.html").write_text(status_mod.render_index_html(index))
 
-    plist = projects_mod.load_projects(DOCUMENTS_DIR)
+    plist = projects_mod.load_projects(docs_dir)
     for p in plist:
-        model = status_mod.build_status(DOCUMENTS_DIR, project=p["id"])
+        model = status_mod.build_status(docs_dir, project=p["id"])
         (out / f"{p['id']}.html").write_text(status_mod.render_html(model))
 
-    (out / "RTM.md").write_text(rtm.render_markdown(build_graph(DOCUMENTS_DIR)))
+    (out / "RTM.md").write_text(rtm.render_markdown(build_graph(docs_dir)))
     print(f"docassert: wrote {out}/ — index + {len(plist)} project page(s) + RTM.md "
           f"(portfolio: {index['overall']['rag']})")
     return 0
@@ -256,10 +268,15 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--version", action="version", version=f"docassert {__version__}")
     sub = parser.add_subparsers(dest="command", required=True)
 
+    def docs_dir_opt(sp: argparse.ArgumentParser) -> None:
+        sp.add_argument("--documents-dir", default=DEFAULT_DOCUMENTS_DIR,
+                        help=f"Documents tree to read (default: {DEFAULT_DOCUMENTS_DIR}/).")
+
     v = sub.add_parser("validate", help="Validate documents against their criteria.")
     v.add_argument("paths", nargs="+", help="Markdown files or globs.")
     v.add_argument("--junit", help="Write a JUnit XML report to this path.")
     v.add_argument("--markdown", help="Write a PR-comment markdown report to this path.")
+    docs_dir_opt(v)
     v.set_defaults(func=cmd_validate)
 
     c = sub.add_parser("consistency", help="Check cross-document traceability.")
@@ -267,12 +284,14 @@ def main(argv: list[str] | None = None) -> int:
     c.add_argument("--markdown", help="Write a PR-comment markdown report to this path.")
     c.add_argument("--no-semantic", action="store_true",
                    help="Skip AI alignment (structural consistency only).")
+    docs_dir_opt(c)
     c.set_defaults(func=cmd_consistency)
 
     r = sub.add_parser("rtm", help="Generate the requirements traceability matrix.")
     r.add_argument("--out", help="Write to this path instead of stdout.")
     r.add_argument("--csv", action="store_true", help="Emit CSV instead of Markdown.")
     r.add_argument("--project", help="Scope to one project (PRJ-NNN-CODE id or CODE).")
+    docs_dir_opt(r)
     r.set_defaults(func=cmd_rtm)
 
     s = sub.add_parser("status", help="Derive a project status page from the documents.")
@@ -284,16 +303,19 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("--index", action="store_true",
                    help="Render the multi-project portfolio index instead of one status.")
     s.add_argument("--out", help="Write to this path instead of stdout.")
+    docs_dir_opt(s)
     s.set_defaults(func=cmd_status)
 
     pg = sub.add_parser("pages", help="Build the full Pages site (portfolio index + a page per project).")
     pg.add_argument("--out", default="_site", help="Output directory (default: _site).")
+    docs_dir_opt(pg)
     pg.set_defaults(func=cmd_pages)
 
     p = sub.add_parser("projects", help="Generate the project registry from the project.md anchors.")
     p.add_argument("--out", help="Write to this path instead of stdout (e.g. projects.yaml).")
     p.add_argument("--check", action="store_true",
                    help="Exit non-zero if the registry file is stale (CI freshness gate).")
+    docs_dir_opt(p)
     p.set_defaults(func=cmd_projects)
 
     ini = sub.add_parser("init", help="Scaffold the default criteria/schema/profiles/templates into a repo.")

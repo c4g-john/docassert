@@ -130,6 +130,12 @@ def check_profile_completeness(documents_dir: str | Path = "documents") -> Check
 
 
 # ── semantic (advisory) ────────────────────────────────────────────────────
+# Each alignment edge costs one API call, so a large graph could otherwise run
+# away on cost. Cap per run; tune with `alignment_limit` in consistency.yaml
+# (0 disables the cap).
+DEFAULT_ALIGNMENT_LIMIT = 25
+
+
 def run_alignment_checks(graph, config) -> list[CheckResult]:
     edges = []  # (prompt, parent, child, relation)
     for rule in config.get("alignment", []):
@@ -142,12 +148,26 @@ def run_alignment_checks(graph, config) -> list[CheckResult]:
 
     if not edges:
         return []
+
+    limit = int(config.get("alignment_limit", DEFAULT_ALIGNMENT_LIMIT) or 0)
+    note: CheckResult | None = None
+    if limit and len(edges) > limit:
+        note = CheckResult(
+            "alignment-limit", True, False,
+            f"graded {limit} of {len(edges)} link(s) — raise `alignment_limit` "
+            f"in consistency.yaml to grade more per run",
+            kind="semantic", score=None)
+        edges = edges[:limit]
+
     if not os.environ.get("ANTHROPIC_API_KEY"):
         return [CheckResult("alignment", True, False,
                             f"skipped — no ANTHROPIC_API_KEY ({len(edges)} link(s) to grade)",
                             kind="semantic", score=None)]
-    return [run_alignment(f"align:{c.id}-{rel}-{p.id}", prompt, p.text, c.text)
-            for prompt, p, c, rel in edges]
+    results = [run_alignment(f"align:{c.id}-{rel}-{p.id}", prompt, p.text, c.text)
+               for prompt, p, c, rel in edges]
+    if note is not None:
+        results.append(note)
+    return results
 
 
 def run_consistency(documents_dir: str | Path = "documents",
