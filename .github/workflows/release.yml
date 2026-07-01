@@ -1,0 +1,29 @@
+name: release
+
+# Publishes docassert to PyPI when a GitHub Release is published.
+# Uses PyPI Trusted Publishing (OIDC) — no API token is stored in the repo.
+# One-time setup on PyPI: Project → Publishing → add a trusted publisher for
+# owner `c4g-john`, repo `docassert`, workflow `release.yml`, environment `pypi`.
+on:
+  release:
+    types: [published]
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/docassert
+    permissions:
+      id-token: write   # required for Trusted Publishing
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build sdist + wheel
+        run: |
+          pip install build
+          python -m build
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
