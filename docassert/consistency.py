@@ -63,7 +63,8 @@ def check_referential_integrity(graph) -> CheckResult:
 
 def check_required_links(graph, config) -> CheckResult:
     required = config.get("required_links", {})
-    approved_orphans, draft_orphans = [], []
+    approved_orphans: list[str] = []
+    draft_orphans: list[str] = []
     for item in graph.all_items():
         relation = required.get(item.type)
         if relation and not item.targets(relation):
@@ -79,7 +80,8 @@ def check_required_links(graph, config) -> CheckResult:
 
 
 def check_coverage(graph, config) -> CheckResult:
-    approved_gaps, draft_gaps = [], []
+    approved_gaps: list[str] = []
+    draft_gaps: list[str] = []
     for rule in config.get("coverage", []):
         parent_prefix, relation = rule["parent"], rule["relation"]
         by_prefix = rule.get("by_prefix")

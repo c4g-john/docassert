@@ -1,0 +1,35 @@
+name: Bug report
+description: Something docassert does wrong
+labels: [bug]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: docassert version
+      description: Output of `docassert --version`
+      placeholder: docassert 0.5.0
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: What happened, and how to reproduce it
+      description: >-
+        The command you ran, the relevant document (or a minimal snippet —
+        mind confidentiality), and what docassert reported.
+      placeholder: |
+        docassert validate documents/PRJ-001-AUR/brd.md
+        → expected …, got …
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected instead
+    validations:
+      required: true
+  - type: input
+    id: env
+    attributes:
+      label: Environment
+      placeholder: "Python 3.12, macOS 15 / ubuntu-latest CI"

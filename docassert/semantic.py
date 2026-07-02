@@ -69,7 +69,7 @@ def _grade(prompt: str, content: str, model: str) -> dict:
             "content": f"AUDIT CRITERION:\n{prompt}\n\nDOCUMENT:\n{content}",
         }],
     )
-    text = "".join(block.text for block in message.content
+    text = "".join(getattr(block, "text", "") for block in message.content
                    if getattr(block, "type", None) == "text").strip()
     # tolerate models that wrap JSON in prose or fences
     start, end = text.find("{"), text.rfind("}")

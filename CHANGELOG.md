@@ -3,6 +3,13 @@
 All notable changes to docassert. Format follows [Keep a Changelog](https://keepachangelog.com/);
 versions follow [SemVer](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- Developer-trust infrastructure: mypy in CI (clean), a coverage floor (80%),
+  a Windows CI leg, `CONTRIBUTING.md`, and issue templates. No user-facing
+  behavior change.
+
 ## [0.5.0] — 2026-07-02
 
 ### Added

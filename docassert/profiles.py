@@ -73,7 +73,7 @@ def completeness(profile: dict, documents: list[dict], project_status: str) -> d
     """
     by_kind: dict[str, list[dict]] = {}
     for d in documents:
-        by_kind.setdefault(d.get("kind"), []).append(d)
+        by_kind.setdefault(str(d.get("kind") or ""), []).append(d)
 
     required = [{"kind": k, "state": _kind_state(k, by_kind)} for k in profile["required"]]
     recommended = [{"kind": k, "state": _kind_state(k, by_kind)} for k in profile["recommended"]]
