@@ -50,6 +50,6 @@ jobs:
   # holds whatever the matrix grows to.
   lint-and-test:
     runs-on: ubuntu-latest
-    needs: [test, windows]
+    needs: [test, windows]   # conformance gates separately (own workflow)
     steps:
       - run: echo "all legs passed"
