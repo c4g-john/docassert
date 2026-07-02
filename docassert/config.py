@@ -101,22 +101,32 @@ def available_profiles() -> list[str]:
 
 
 # ── scaffolding (docassert init) ────────────────────────────────────────────
-_INIT_TREE = ["criteria", "schema", "profiles", "templates", "consistency.yaml"]
+# (packaged source, destination in the repo). The doc-to-pmo Claude skill lands
+# under .claude/skills/ so Claude Code discovers it in the user's repo.
+_INIT_TREE = [
+    ("criteria", "criteria"),
+    ("schema", "schema"),
+    ("profiles", "profiles"),
+    ("templates", "templates"),
+    ("consistency.yaml", "consistency.yaml"),
+    ("skills", ".claude/skills"),
+]
 
 
 def init(dest: str | Path = ".") -> list[str]:
     """Copy the packaged defaults into `dest`, skipping anything already present.
-    Returns the top-level names that were created."""
+    Returns the destination names that were created."""
     dest = Path(dest)
     created: list[str] = []
-    for name in _INIT_TREE:
-        target = dest / name
+    for src_name, dest_name in _INIT_TREE:
+        target = dest / dest_name
         if target.exists():
             continue
-        src = DATA_DIR / name
+        src = DATA_DIR / src_name
         if src.is_dir():
             shutil.copytree(src, target)
         else:
+            target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
-        created.append(name)
+        created.append(dest_name)
     return created
