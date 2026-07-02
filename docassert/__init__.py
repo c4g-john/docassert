@@ -5,4 +5,4 @@ standard: deterministic structural checks that gate a merge, plus optional
 AI-graded semantic checks that advise.
 """
 
-__version__ = "0.9.0"
+__version__ = "0.10.0"

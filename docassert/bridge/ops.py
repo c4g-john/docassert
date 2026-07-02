@@ -171,9 +171,28 @@ def reconcile(plan: BridgePlan, gh: G.GhRunner, repo: str) -> tuple[list[str], i
 
 
 def status(plan: BridgePlan, gh: G.GhRunner, repo: str) -> dict:
-    """Read-only: delivery progress per feature from issue states."""
-    by_key = _index(G.list_issues(gh, repo))
-    out: dict = {"projects": []}
+    """Read-only: delivery progress per feature, plus scope classification.
+
+    Unlike reconcile, this never labels or comments; it only reports, so it is
+    safe to run from the dashboard build.
+    """
+    issues = G.list_issues(gh, repo)
+    by_key = _index(issues)
+    managed = plan.managed_ids
+    unverified, orphaned = [], []
+    for issue in issues:
+        if issue.get("state") != "open":
+            continue
+        key = _marker_of(issue)
+        if key == SCOPE_REPORT_KEY:
+            continue
+        if key is None:
+            unverified.append({"number": issue["number"], "title": issue["title"]})
+        elif key not in managed:
+            orphaned.append({"number": issue["number"], "title": issue["title"],
+                             "doc": key})
+    out: dict = {"repo": repo, "projects": [],
+                 "scope": {"unverified": unverified, "orphaned": orphaned}}
     for p in plan.projects:
         feats = []
         for f in p["features"]:

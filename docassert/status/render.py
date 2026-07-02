@@ -205,6 +205,40 @@ def render_html(model) -> str:
                         f'{note}<table><thead><tr><th>Kind</th><th>State</th></tr></thead>'
                         f'<tbody>{req_rows}{sep}{rec_rows}</tbody></table></section>')
 
+    execution_html = ""
+    ex = model.get("execution")
+    if ex:
+        feat_rows: list[str] = []
+        for f in ex.get("features", []):
+            total = f.get("stories_total", 0) or 0
+            done = f.get("stories_closed", 0) or 0
+            pct = (100 * done // total) if total else 0
+            mark = "✓" if f.get("closed") else ""
+            issue = f' · <a href="https://github.com/{esc(ex.get("repo", ""))}/issues/{f["issue"]}">#{f["issue"]}</a>' if f.get("issue") else ""
+            feat_rows.append(
+                f'<div class="sig"><div class="sig-h"><span>{esc(f["id"])} {mark}</span>'
+                f'<span>{done}/{total} stories{issue}</span></div>'
+                f'<div class="bar"><div class="bar-f" style="width:{pct}%;background:var(--ok)"></div></div></div>')
+        overall_t = ex.get("stories_total", 0) or 0
+        overall_d = ex.get("stories_closed", 0) or 0
+        execution_html = (
+            f'<section><h2>Delivery · {overall_d}/{overall_t} stories closed</h2>'
+            '<p style="color:var(--muted);font-size:13px;margin:0 0 10px">'
+            "Read from the bridge-managed issues. Scope lives in these documents; "
+            "delivery lives on the board.</p>" + "".join(feat_rows) + "</section>")
+        scope = ex.get("scope") or {}
+        bad = scope.get("unverified", []) + scope.get("orphaned", [])
+        if bad:
+            items = "".join(
+                f'<li><a href="https://github.com/{esc(ex.get("repo", ""))}/issues/{i["number"]}">#{i["number"]}</a> {esc(i["title"])}</li>'
+                for i in bad)
+            execution_html += (
+                f'<section><h2 style="color:var(--bad)">Scope · {len(bad)} unmatched item(s)</h2>'
+                f'<ul>{items}</ul></section>')
+        else:
+            execution_html += ('<section><h2>Scope</h2><p style="color:var(--ok)">'
+                               "Every open issue matches an approved item in the documents.</p></section>")
+
     title = esc(model.get("title", "Project Status"))
     pid = model.get("project")
     back = '<a class="back" href="index.html">← all projects</a>' if pid else ""
@@ -226,6 +260,7 @@ def render_html(model) -> str:
     {c['approved']} approved{scope} · generated {gen}. Do not edit — regenerated from the documents.</p>
   <section><h2>Traceability coverage</h2>{coverage}</section>
   {document_set}
+  {execution_html}
   {problems}
   <section><h2>Open risks ({len(model['risks'])})</h2><ul>{risks}</ul></section>
   <section><h2>Latest status report</h2><p>{report}</p></section>

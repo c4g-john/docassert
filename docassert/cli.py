@@ -232,9 +232,19 @@ def cmd_pages(args: argparse.Namespace) -> int:
         status_mod.render_badge_json(index["overall"]["rag"]))
     (out / "badges").mkdir(exist_ok=True)
 
+    execution = {}
+    if getattr(args, "execution", None):
+        import json as _json
+        data = _json.loads(Path(args.execution).read_text())
+        for proj in data.get("projects", []):
+            execution[proj["id"]] = {**proj, "scope": data.get("scope"),
+                                     "repo": data.get("repo")}
+
     plist = projects_mod.load_projects(docs_dir)
     for p in plist:
         model = status_mod.build_status(docs_dir, project=p["id"])
+        if p["id"] in execution:
+            model["execution"] = execution[p["id"]]
         (out / f"{p['id']}.html").write_text(status_mod.render_html(model))
         (out / "badges" / f"{p['id']}.json").write_text(
             status_mod.render_badge_json(model["rag"], label=p["code"].lower()))
@@ -398,6 +408,7 @@ def main(argv: list[str] | None = None) -> int:
 
     pg = sub.add_parser("pages", help="Build the full Pages site (portfolio index + a page per project).")
     pg.add_argument("--out", default="_site", help="Output directory (default: _site).")
+    pg.add_argument("--execution", help="Optional bridge-status JSON; adds Delivery and Scope panels to project pages.")
     docs_dir_opt(pg)
     pg.set_defaults(func=cmd_pages)
 

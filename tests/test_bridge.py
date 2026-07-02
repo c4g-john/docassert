@@ -320,3 +320,18 @@ def test_scaffold_syncs_board(tmp_path):
     assert any("5 item(s) synced" in a for a in actions)
     adds = [q for q in bgh.gql if "addProjectV2ItemById" in q]
     assert len(adds) == 5
+
+
+def test_status_includes_scope_classification(tmp_path):
+    plan = build_bridge_plan(_tree(tmp_path))
+    issues = [
+        _mk_issue(1, "TST-US-001"),
+        {"number": 2, "node_id": "N2", "state": "open", "title": "rogue",
+         "body": "no marker", "labels": []},
+        _mk_issue(3, "TST-US-999"),
+        _mk_issue(4, "TST-US-002", state="closed"),   # closed: not scope-checked
+    ]
+    data = ops.status(plan, FakeGh(issues), "o/r")
+    assert data["repo"] == "o/r"
+    assert [i["number"] for i in data["scope"]["unverified"]] == [2]
+    assert [i["doc"] for i in data["scope"]["orphaned"]] == ["TST-US-999"]
