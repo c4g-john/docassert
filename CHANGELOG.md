@@ -3,6 +3,18 @@
 All notable changes to docassert. Format follows [Keep a Changelog](https://keepachangelog.com/);
 versions follow [SemVer](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+- Internal: split the 546-line `status.py` into a `docassert.status` package
+  (`derive` model + `render` views) and de-duplicated the HTML escaper. Public
+  API unchanged.
+
+### Fixed
+- Packaging now auto-discovers subpackages (`packages.find`), so nested
+  packages like `docassert.status` ship in the wheel. The previous explicit
+  `packages = ["docassert"]` would have omitted them.
+
 ## [0.7.0] — 2026-07-02
 
 ### Changed
