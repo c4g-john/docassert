@@ -3,12 +3,15 @@
 All notable changes to docassert. Format follows [Keep a Changelog](https://keepachangelog.com/);
 versions follow [SemVer](https://semver.org/).
 
-## [Unreleased]
+## [0.6.0] — 2026-07-02
 
 ### Added
+- **Status badges**: `docassert pages` now emits shields.io endpoint payloads —
+  `badge.json` (portfolio) and `badges/<PROJECT-ID>.json` (per project) — so a
+  README can carry a live derived-status badge:
+  `https://img.shields.io/endpoint?url=<site>/badge.json`.
 - Developer-trust infrastructure: mypy in CI (clean), a coverage floor (80%),
-  a Windows CI leg, `CONTRIBUTING.md`, and issue templates. No user-facing
-  behavior change.
+  a Windows CI leg, `CONTRIBUTING.md`, and issue templates.
 
 ## [0.5.0] — 2026-07-02
 
