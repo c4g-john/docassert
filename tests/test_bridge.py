@@ -153,9 +153,7 @@ def test_scaffold_creates_then_is_idempotent(tmp_path):
     gh = FakeGh()
     actions = ops.scaffold(plan, gh, "o/r")
     assert sum(1 for a in actions if a.startswith("created")) == 5  # 2 feat + 3 stories
-    # second run against the issues the first created
-    issues = [_mk_issue(101, "TST-PR-001", feature_title(plan.features[0]))]
-    # simulate full existing state: everything exists with correct title/body
+    # second run: simulate full existing state with correct titles/bodies
     existing = []
     for i, f in enumerate(plan.features):
         e = _mk_issue(200 + i, f.id, feature_title(f))
