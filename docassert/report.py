@@ -12,6 +12,11 @@ _CROSS = "✗"
 _DASH = "—"
 
 
+def _all(results_by_doc: dict[str, list[CheckResult]]) -> list[CheckResult]:
+    """Every result across every document, flattened."""
+    return [r for rs in results_by_doc.values() for r in rs]
+
+
 def _mark(r: CheckResult) -> str:
     if r.kind == "semantic" and r.score is None:
         return "○"  # ○ skipped/unavailable
@@ -31,7 +36,7 @@ def console(results_by_doc: dict[str, list[CheckResult]]) -> str:
 
 
 def summary_line(results_by_doc: dict[str, list[CheckResult]]) -> str:
-    blocking = sum(1 for rs in results_by_doc.values() for r in rs if r.is_blocking_failure)
+    blocking = sum(1 for r in _all(results_by_doc) if r.is_blocking_failure)
     docs = len(results_by_doc)
     if blocking:
         return f"{_CROSS} {blocking} blocking failure(s) across {docs} document(s) {_DASH} merge blocked."
@@ -51,7 +56,7 @@ def json_report(results_by_doc: dict[str, list[CheckResult]]) -> str:
         } for r in results]
         for path, results in results_by_doc.items()
     }
-    all_results = [r for rs in results_by_doc.values() for r in rs]
+    all_results = _all(results_by_doc)
     summary = {
         "documents": len(results_by_doc),
         "checks": len(all_results),
@@ -89,9 +94,9 @@ def markdown(results_by_doc: dict[str, list[CheckResult]],
 
 
 def junit(results_by_doc: dict[str, list[CheckResult]]) -> str:
-    total = sum(len(rs) for rs in results_by_doc.values())
-    failures = sum(1 for rs in results_by_doc.values()
-                   for r in rs if r.is_blocking_failure)
+    all_results = _all(results_by_doc)
+    total = len(all_results)
+    failures = sum(1 for r in all_results if r.is_blocking_failure)
     suites = ET.Element("testsuites", tests=str(total), failures=str(failures))
     for path, results in results_by_doc.items():
         suite = ET.SubElement(suites, "testsuite", name=path,

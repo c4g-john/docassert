@@ -300,18 +300,19 @@ def main(argv: list[str] | None = None) -> int:
         sp.add_argument("--documents-dir", default=DEFAULT_DOCUMENTS_DIR,
                         help=f"Documents tree to read (default: {DEFAULT_DOCUMENTS_DIR}/).")
 
+    def report_opts(sp: argparse.ArgumentParser) -> None:
+        sp.add_argument("--junit", help="Write a JUnit XML report to this path.")
+        sp.add_argument("--markdown", help="Write a PR-comment markdown report to this path.")
+        sp.add_argument("--json", help="Write a machine-readable JSON report to this path.")
+
     v = sub.add_parser("validate", help="Validate documents against their criteria.")
     v.add_argument("paths", nargs="+", help="Markdown files or globs.")
-    v.add_argument("--junit", help="Write a JUnit XML report to this path.")
-    v.add_argument("--markdown", help="Write a PR-comment markdown report to this path.")
-    v.add_argument("--json", help="Write a machine-readable JSON report to this path.")
+    report_opts(v)
     docs_dir_opt(v)
     v.set_defaults(func=cmd_validate)
 
     c = sub.add_parser("consistency", help="Check cross-document traceability.")
-    c.add_argument("--junit", help="Write a JUnit XML report to this path.")
-    c.add_argument("--markdown", help="Write a PR-comment markdown report to this path.")
-    c.add_argument("--json", help="Write a machine-readable JSON report to this path.")
+    report_opts(c)
     c.add_argument("--no-semantic", action="store_true",
                    help="Skip AI alignment (structural consistency only).")
     docs_dir_opt(c)
