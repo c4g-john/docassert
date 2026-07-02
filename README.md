@@ -47,8 +47,8 @@ flagged as TODOs, never invented). The skill's source is
 
 | Command | What it does |
 |---|---|
-| `docassert validate <globs>` | Validate documents against their kind's criteria. Exit code = number of blocking failures (capped at 125). |
-| `docassert consistency` | Cross-document checks: referential integrity, coverage, required links, profile completeness. |
+| `docassert validate <globs>` | Validate documents against their kind's criteria. Exit code = number of blocking failures (capped at 125). Reports: `--junit` / `--markdown` / `--json`. |
+| `docassert consistency` | Cross-document checks: referential integrity, coverage, required links, profile completeness. Reports: `--junit` / `--markdown` / `--json`. |
 | `docassert rtm [--project ID]` | Requirements traceability matrix (Markdown or CSV). |
 | `docassert status [--project ID] [--index]` | Derived project status (md / json / html). |
 | `docassert pages --out DIR` | Build the portfolio site (index + a page per project). |
@@ -78,6 +78,17 @@ kind is adding a trio — no code for the common cases.
   references, unique ids. Plain Python, reliable enough to gate a merge.
 - **Semantic — AI-graded, advisory.** Scored via the Anthropic API and posted to
   the PR — never blocking. Set `ANTHROPIC_API_KEY` to enable; skipped otherwise.
+
+## Privacy
+
+Structural checks run **entirely locally** — no document content leaves your
+machine or CI runner. Semantic checks are the one exception: when
+`ANTHROPIC_API_KEY` is set, the graded excerpts (section text, linked item
+text) are sent to the **Anthropic API** for scoring. Without the key, semantic
+checks are skipped and nothing is sent anywhere. Alignment grading is capped at
+`alignment_limit` links per run (default 25). If your documents are
+confidential, run without the key or review [Anthropic's data-usage
+policies](https://www.anthropic.com/legal/commercial-terms) first.
 
 ## Development
 
