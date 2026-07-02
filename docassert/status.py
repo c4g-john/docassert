@@ -460,6 +460,14 @@ def render_html(model) -> str:
 
 
 _RAG_COLOR = {"green": "var(--ok)", "amber": "var(--amber)", "red": "var(--bad)"}
+_BADGE_COLOR = {"green": "brightgreen", "amber": "orange", "red": "red"}
+
+
+def render_badge_json(rag: str, label: str = "pmo docs") -> str:
+    """A shields.io endpoint payload (https://shields.io/badges/endpoint-badge),
+    so a README can carry a live derived-status badge."""
+    return json.dumps({"schemaVersion": 1, "label": label,
+                       "message": rag, "color": _BADGE_COLOR[rag]}) + "\n"
 
 
 def _index_card(p, esc) -> str:

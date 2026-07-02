@@ -52,7 +52,7 @@ flagged as TODOs, never invented). The skill's source is
 | `docassert consistency` | Cross-document checks: referential integrity, coverage, required links, profile completeness. Reports: `--junit` / `--markdown` / `--json`. |
 | `docassert rtm [--project ID]` | Requirements traceability matrix (Markdown or CSV). |
 | `docassert status [--project ID] [--index]` | Derived project status (md / json / html). |
-| `docassert pages --out DIR` | Build the portfolio site (index + a page per project). |
+| `docassert pages --out DIR` | Build the portfolio site (index + a page per project + shields.io badge endpoints `badge.json` / `badges/<ID>.json`). |
 | `docassert projects [--out] [--check]` | Generate / verify the project registry. |
 | `docassert new <kind> --project ID` | Scaffold a document from its template with identity filled in (`new project --code XYZ` auto-numbers the id); suggests the next free item ids. |
 | `docassert init [DIR]` | Scaffold the default config into a repo. |

@@ -226,13 +226,21 @@ def cmd_pages(args: argparse.Namespace) -> int:
     index = status_mod.build_index(docs_dir)
     (out / "index.html").write_text(status_mod.render_index_html(index))
 
+    # shields.io endpoint badges: one for the portfolio, one per project
+    # (https://img.shields.io/endpoint?url=<site>/badge.json)
+    (out / "badge.json").write_text(
+        status_mod.render_badge_json(index["overall"]["rag"]))
+    (out / "badges").mkdir(exist_ok=True)
+
     plist = projects_mod.load_projects(docs_dir)
     for p in plist:
         model = status_mod.build_status(docs_dir, project=p["id"])
         (out / f"{p['id']}.html").write_text(status_mod.render_html(model))
+        (out / "badges" / f"{p['id']}.json").write_text(
+            status_mod.render_badge_json(model["rag"], label=p["code"].lower()))
 
     (out / "RTM.md").write_text(rtm.render_markdown(build_graph(docs_dir)))
-    print(f"docassert: wrote {out}/ — index + {len(plist)} project page(s) + RTM.md "
+    print(f"docassert: wrote {out}/ — index + {len(plist)} project page(s) + badges + RTM.md "
           f"(portfolio: {index['overall']['rag']})")
     return 0
 
