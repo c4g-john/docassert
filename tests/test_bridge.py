@@ -224,7 +224,6 @@ def test_status_counts_closed_stories(tmp_path):
 
 def test_scaffold_tolerates_existing_sub_issue_link(tmp_path):
     """GitHub's duplicate-link error (observed live 2026-07-02) is success."""
-    from docassert.bridge import gh as ghmod
     from docassert.bridge.gh import GhError
 
     class LinkedGh(FakeGh):
