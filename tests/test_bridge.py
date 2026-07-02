@@ -234,7 +234,6 @@ def test_scaffold_tolerates_existing_sub_issue_link(tmp_path):
                           "Sub issue may only have one parent")
 
     plan = build_bridge_plan(_tree(tmp_path))
-    ghmod  # silence unused-import pattern checks
     gh = LinkedGh()
     ops.scaffold(plan, gh, "o/r")   # must not raise
 
