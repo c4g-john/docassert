@@ -1,6 +1,7 @@
-"""Render check results as console text, PR-comment markdown, or JUnit XML."""
+"""Render check results as console text, PR-comment markdown, JUnit XML, or JSON."""
 from __future__ import annotations
 
+import json as _json
 import xml.etree.ElementTree as ET
 from xml.dom import minidom
 
@@ -35,6 +36,31 @@ def summary_line(results_by_doc: dict[str, list[CheckResult]]) -> str:
     if blocking:
         return f"{_CROSS} {blocking} blocking failure(s) across {docs} document(s) {_DASH} merge blocked."
     return f"{_TICK} All structural checks passed across {docs} document(s) {_DASH} clear to merge."
+
+
+def json_report(results_by_doc: dict[str, list[CheckResult]]) -> str:
+    """Machine-readable results: one entry per document, plus a summary."""
+    documents = {
+        path: [{
+            "check_id": r.check_id,
+            "passed": r.passed,
+            "blocking": r.blocking,
+            "kind": r.kind,
+            "score": r.score,
+            "detail": r.detail,
+        } for r in results]
+        for path, results in results_by_doc.items()
+    }
+    all_results = [r for rs in results_by_doc.values() for r in rs]
+    summary = {
+        "documents": len(results_by_doc),
+        "checks": len(all_results),
+        "blocking_failures": sum(1 for r in all_results if r.is_blocking_failure),
+        "advisory_failures": sum(1 for r in all_results
+                                 if not r.passed and not r.blocking),
+        "passed": not any(r.is_blocking_failure for r in all_results),
+    }
+    return _json.dumps({"summary": summary, "documents": documents}, indent=2) + "\n"
 
 
 def markdown(results_by_doc: dict[str, list[CheckResult]],

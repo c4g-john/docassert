@@ -116,6 +116,8 @@ def cmd_validate(args: argparse.Namespace) -> int:
         Path(args.junit).write_text(report.junit(results_by_doc))
     if args.markdown:
         Path(args.markdown).write_text(report.markdown(results_by_doc))
+    if args.json:
+        Path(args.json).write_text(report.json_report(results_by_doc))
 
     return _capped(sum(1 for rs in results_by_doc.values()
                        for r in rs if r.is_blocking_failure))
@@ -133,6 +135,8 @@ def cmd_consistency(args: argparse.Namespace) -> int:
     if args.markdown:
         Path(args.markdown).write_text(
             report.markdown(results_by_doc, title="docassert consistency"))
+    if args.json:
+        Path(args.json).write_text(report.json_report(results_by_doc))
 
     return _capped(sum(1 for r in results if r.is_blocking_failure))
 
@@ -292,12 +296,14 @@ def main(argv: list[str] | None = None) -> int:
     v.add_argument("paths", nargs="+", help="Markdown files or globs.")
     v.add_argument("--junit", help="Write a JUnit XML report to this path.")
     v.add_argument("--markdown", help="Write a PR-comment markdown report to this path.")
+    v.add_argument("--json", help="Write a machine-readable JSON report to this path.")
     docs_dir_opt(v)
     v.set_defaults(func=cmd_validate)
 
     c = sub.add_parser("consistency", help="Check cross-document traceability.")
     c.add_argument("--junit", help="Write a JUnit XML report to this path.")
     c.add_argument("--markdown", help="Write a PR-comment markdown report to this path.")
+    c.add_argument("--json", help="Write a machine-readable JSON report to this path.")
     c.add_argument("--no-semantic", action="store_true",
                    help="Skip AI alignment (structural consistency only).")
     docs_dir_opt(c)

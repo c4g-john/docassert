@@ -30,6 +30,38 @@ def test_unsupported_type_raises(tmp_path):
         E.extract(f)
 
 
+def _minimal_pdf(text: str) -> bytes:
+    """Assemble a one-page PDF with `text` in a content stream, xref included."""
+    stream = f"BT /F1 24 Tf 72 720 Td ({text}) Tj ET".encode()
+    objects = [
+        b"<< /Type /Catalog /Pages 2 0 R >>",
+        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        (b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] "
+         b"/Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>"),
+        b"<< /Length " + str(len(stream)).encode() + b" >>\nstream\n" + stream + b"\nendstream",
+        b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+    ]
+    out = b"%PDF-1.4\n"
+    offsets = []
+    for i, body in enumerate(objects, start=1):
+        offsets.append(len(out))
+        out += f"{i} 0 obj\n".encode() + body + b"\nendobj\n"
+    xref_at = len(out)
+    out += f"xref\n0 {len(objects) + 1}\n0000000000 65535 f \n".encode()
+    for off in offsets:
+        out += f"{off:010d} 00000 n \n".encode()
+    out += (f"trailer\n<< /Size {len(objects) + 1} /Root 1 0 R >>\n"
+            f"startxref\n{xref_at}\n%%EOF\n").encode()
+    return out
+
+
+def test_extract_pdf(tmp_path):
+    pytest.importorskip("pypdf")  # needs the 'convert' extra
+    path = tmp_path / "s.pdf"
+    path.write_bytes(_minimal_pdf("Hello docassert PDF"))
+    assert "Hello docassert PDF" in E.extract(path)
+
+
 def test_extract_docx_paragraphs_and_tables(tmp_path):
     docx = pytest.importorskip("docx")  # needs the 'convert' extra
     d = docx.Document()
