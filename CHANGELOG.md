@@ -3,6 +3,12 @@
 All notable changes to docassert. Format follows [Keep a Changelog](https://keepachangelog.com/);
 versions follow [SemVer](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- CI runs the PMO as Code conformance suite (spec v0.3.0, 64 cases) on every
+  change; the README claims spec v0.3.
+
 ## [0.7.1] — 2026-07-02
 
 ### Changed

@@ -14,7 +14,7 @@ derived from the documents rather than self-reported.
 
 docassert is the reference implementation of **[PMO as Code](https://c4g-john.github.io/pmo-as-code/)** —
 a vendor-neutral standard for running a PMO from version-controlled, declarative
-files. It implements the [PMO as Code specification](https://github.com/c4g-john/pmo-as-code-spec) **v0.2**.
+files. It implements the [PMO as Code specification](https://github.com/c4g-john/pmo-as-code-spec) **v0.3** and passes its [conformance suite](https://github.com/c4g-john/pmo-as-code-spec/tree/main/conformance) in CI.
 
 ## Install
 
