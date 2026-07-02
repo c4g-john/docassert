@@ -128,9 +128,9 @@ def build_status(documents_dir=DOCUMENTS_DIR, project: str | None = None) -> dic
     else:
         docs = all_docs
 
-    id_index = {}
+    id_index: dict[str, list[str]] = {}
     for d in all_docs:                       # uniqueness is always global
-        id_index.setdefault(d.id, []).append(d.path)
+        id_index.setdefault(d.id or "", []).append(d.path)
 
     documents = [{
         "kind": d.kind,

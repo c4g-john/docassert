@@ -1,7 +1,8 @@
 name: quality
 
-# Lints the codebase and runs docassert's own unit tests on every PR and push,
-# across every Python version the package claims to support.
+# Lints, type-checks, and runs docassert's own unit tests (with a coverage
+# floor) on every PR and push, across every Python version the package claims
+# to support — plus a Windows leg.
 on:
   pull_request:
   push:
@@ -23,13 +24,29 @@ jobs:
         run: pip install -e ".[dev,convert]"   # convert = python-docx/pypdf, exercises `extract`
       - name: Ruff (lint)
         run: ruff check .
+      - name: Mypy (types)
+        run: mypy --config-file pyproject.toml
+      - name: Pytest (unit tests + coverage floor)
+        run: pytest -q --cov=docassert
+
+  windows:
+    runs-on: windows-latest
+    env:
+      PYTHONUTF8: "1"   # console output uses ✓/✗; keep Windows stdout UTF-8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install docassert with dev tools
+        run: pip install -e ".[dev,convert]"
       - name: Pytest (unit tests)
         run: pytest -q
 
   # Stable aggregate for branch protection: require "lint-and-test" and it
-  # holds whatever the version matrix grows to.
+  # holds whatever the matrix grows to.
   lint-and-test:
     runs-on: ubuntu-latest
-    needs: test
+    needs: [test, windows]
     steps:
-      - run: echo "all matrix legs passed"
+      - run: echo "all legs passed"

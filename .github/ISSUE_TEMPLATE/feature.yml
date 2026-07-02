@@ -1,0 +1,28 @@
+name: Feature request
+description: A new check, kind, command, or capability
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What can't you do (or gate, or see) today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: >-
+        What should docassert do? If this changes a grammar or blocking
+        semantics, it belongs in the spec first —
+        https://github.com/c4g-john/pmo-as-code-spec.
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options: [checks, kinds/templates, CLI, status/pages, profiles, conversion (extract/doc-to-pmo), other]
+    validations:
+      required: true
