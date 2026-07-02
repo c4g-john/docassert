@@ -14,13 +14,17 @@ checks:
     type: structural
     blocking: true
     description: Frontmatter is valid against schema/data-migration-plan.schema.json.
+  - id: frontmatter-complete
+    type: structural
+    blocking: once-proposed
+    description: Every schema-required frontmatter field is present (advisory while draft).
   - id: required-sections
     type: structural
-    blocking: true
+    blocking: once-proposed
     description: Every required section is present and non-empty.
   - id: mapping-table
     type: structural
-    blocking: true
+    blocking: once-proposed
     description: The Field Mapping section contains a mapping table.
   - id: unique-id
     type: structural

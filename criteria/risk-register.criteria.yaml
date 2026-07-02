@@ -14,9 +14,13 @@ checks:
     type: structural
     blocking: true
     description: Frontmatter is valid against schema/risk-register.schema.json.
+  - id: frontmatter-complete
+    type: structural
+    blocking: once-proposed
+    description: Every schema-required frontmatter field is present (advisory while draft).
   - id: required-sections
     type: structural
-    blocking: true
+    blocking: once-proposed
     description: Every required section is present and non-empty.
   - id: items-well-formed
     type: structural
@@ -24,7 +28,7 @@ checks:
     description: Every risk is a valid **RISK-###** item.
   - id: risk-items-complete
     type: structural
-    blocking: true
+    blocking: once-proposed
     description: Every risk states a Probability, Impact, Owner, and Response.
   - id: unique-id
     type: structural

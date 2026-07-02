@@ -18,9 +18,13 @@ checks:
     type: structural
     blocking: true
     description: Frontmatter is valid against schema/adr.schema.json.
+  - id: frontmatter-complete
+    type: structural
+    blocking: once-proposed
+    description: Every schema-required frontmatter field is present (advisory while draft).
   - id: required-sections
     type: structural
-    blocking: true
+    blocking: once-proposed
     description: Every required section is present and non-empty.
   - id: items-well-formed
     type: structural
@@ -28,7 +32,7 @@ checks:
     description: Every decision is a valid **ADR-###** item.
   - id: adr-items-have-status
     type: structural
-    blocking: true
+    blocking: once-proposed
     description: Every decision declares a valid Status (proposed | accepted | superseded | deprecated | rejected).
   - id: unique-id
     type: structural

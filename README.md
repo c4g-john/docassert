@@ -77,6 +77,9 @@ kind is adding a trio — no code for the common cases.
 - **Structural — deterministic, blocking.** Required fields and sections,
   measurable success criteria, risks with owner + mitigation, resolving
   references, unique ids. Plain Python, reliable enough to gate a merge.
+  Within this tier, *integrity* checks (malformed items, bad types, duplicate
+  ids) block at any status, while *completeness* checks relax to advisory on
+  `status: draft` and gate once a document is proposed — WIP is never punished.
 - **Semantic — AI-graded, advisory.** Scored via the Anthropic API and posted to
   the PR — never blocking. Set `ANTHROPIC_API_KEY` to enable; skipped otherwise.
 

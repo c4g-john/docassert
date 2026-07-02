@@ -15,13 +15,17 @@ checks:
     type: structural
     blocking: true
     description: Frontmatter is valid against schema/rollback-plan.schema.json.
+  - id: frontmatter-complete
+    type: structural
+    blocking: once-proposed
+    description: Every schema-required frontmatter field is present (advisory while draft).
   - id: required-sections
     type: structural
-    blocking: true
+    blocking: once-proposed
     description: Every required section is present and non-empty.
   - id: numbered-steps
     type: structural
-    blocking: true
+    blocking: once-proposed
     description: Rollback Steps is an ordered list of at least two numbered steps.
   - id: unique-id
     type: structural

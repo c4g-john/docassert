@@ -3,6 +3,26 @@
 All notable changes to docassert. Format follows [Keep a Changelog](https://keepachangelog.com/);
 versions follow [SemVer](https://semver.org/).
 
+## [0.7.0] — 2026-07-02
+
+### Changed
+- **Drafts are never punished for incompleteness.** Per-document checks now
+  carry a severity: integrity checks (malformed items, type/format errors,
+  duplicate ids) block at any status, while completeness checks (missing
+  required fields, empty sections, ownerless risks, unmeasurable criteria) are
+  **advisory while `status: draft`** and block once a document is proposed or
+  beyond (`blocking: once-proposed` in criteria). Found by dogfooding a real
+  BRD whose draft charter legitimately has no budget yet.
+- Frontmatter validation split accordingly: `frontmatter-schema` (wellformed
+  types/formats, always blocks) + new `frontmatter-complete` (required fields
+  present, once-proposed). `dates-consistent` treats absent dates as
+  completeness and only hard-fails invalid or inverted dates.
+
+### Fixed
+- `unique-id` no longer false-positives when the same file is referenced by
+  different path spellings (absolute vs relative): paths are resolved before
+  comparison.
+
 ## [0.6.0] — 2026-07-02
 
 ### Added

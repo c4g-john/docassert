@@ -16,6 +16,10 @@ checks:
     blocking: true
     description: Frontmatter is present and valid against schema/project.schema.json.
 
+  - id: frontmatter-complete
+    type: structural
+    blocking: once-proposed
+    description: Every schema-required frontmatter field is present (advisory while draft).
   - id: project-id-format
     type: structural
     blocking: true
@@ -23,7 +27,7 @@ checks:
 
   - id: required-sections
     type: structural
-    blocking: true
+    blocking: once-proposed
     description: Every required section is present and non-empty.
 
   - id: unique-id

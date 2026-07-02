@@ -26,19 +26,23 @@ checks:
     blocking: true
     description: Frontmatter is present and valid against schema/charter.schema.json.
 
+  - id: frontmatter-complete
+    type: structural
+    blocking: once-proposed
+    description: Every schema-required frontmatter field is present (advisory while draft).
   - id: required-sections
     type: structural
-    blocking: true
+    blocking: once-proposed
     description: Every required section is present and non-empty.
 
   - id: measurable-success-criteria
     type: structural
-    blocking: true
+    blocking: once-proposed
     description: Every Success Criteria bullet states a measurable threshold (number, %, currency, or date).
 
   - id: risks-have-owner-and-mitigation
     type: structural
-    blocking: true
+    blocking: once-proposed
     description: Every Risks bullet names an Owner and a Mitigation.
 
   - id: dates-consistent
