@@ -3,6 +3,12 @@
 All notable changes to docassert. Format follows [Keep a Changelog](https://keepachangelog.com/);
 versions follow [SemVer](https://semver.org/).
 
+## [0.8.1] — 2026-07-02
+
+### Fixed
+- `bridge scaffold` re-runs no longer fail when sub-issue links already exist
+  (GitHub reports the duplicate in wording the tolerance check missed).
+
 ## [0.8.0] — 2026-07-02
 
 ### Added

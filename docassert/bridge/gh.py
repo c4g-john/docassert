@@ -110,5 +110,9 @@ def add_sub_issue(gh: GhRunner, parent_node: str, child_node: str) -> None:
     try:
         gh.graphql(q, p=parent_node, c=child_node)
     except GhError as exc:
-        if "already" not in str(exc).lower():   # re-link is fine
+        # An existing identical link is success, not failure. GitHub words it
+        # several ways ("duplicate sub-issues", "may only have one parent").
+        msg = str(exc).lower()
+        if not any(s in msg for s in ("already", "duplicate sub-issue",
+                                      "only have one parent")):
             raise

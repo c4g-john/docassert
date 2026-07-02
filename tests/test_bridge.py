@@ -220,3 +220,30 @@ def test_status_counts_closed_stories(tmp_path):
     assert feats["TST-PR-001"]["stories_closed"] == 1
     assert feats["TST-PR-001"]["stories_total"] == 2
     assert "1/2" in ops.render_status(data)
+
+
+def test_scaffold_tolerates_existing_sub_issue_link(tmp_path):
+    """GitHub's duplicate-link error (observed live 2026-07-02) is success."""
+    from docassert.bridge.gh import GhError
+
+    class LinkedGh(FakeGh):
+        def graphql(self, query, **vars_):
+            raise GhError("gh: Failed to add sub-issue #2 to parent #1. "
+                          "Issue may not contain duplicate sub-issues and "
+                          "Sub issue may only have one parent")
+
+    plan = build_bridge_plan(_tree(tmp_path))
+    gh = LinkedGh()
+    ops.scaffold(plan, gh, "o/r")   # must not raise
+
+
+def test_add_sub_issue_still_raises_on_real_errors(tmp_path):
+    from docassert.bridge.gh import GhError, add_sub_issue
+
+    class BoomGh(FakeGh):
+        def graphql(self, query, **vars_):
+            raise GhError("gh: Something else entirely")
+
+    import pytest
+    with pytest.raises(GhError):
+        add_sub_issue(BoomGh(), "N1", "N2")
