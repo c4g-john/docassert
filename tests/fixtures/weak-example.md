@@ -9,7 +9,7 @@ budget:
 dates:
   created: 2026-03-01
   target: 2026-02-01
-status: draft
+status: proposed
 ---
 
 ## Objective

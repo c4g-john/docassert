@@ -4,6 +4,7 @@ from __future__ import annotations
 import datetime as dt
 import re
 from collections.abc import Callable
+from pathlib import Path
 
 from jsonschema import Draft7Validator, FormatChecker
 
@@ -73,15 +74,31 @@ def _as_date(value) -> dt.date | None:
 
 
 # ── individual checks ──────────────────────────────────────────────────────
+def _schema_errors(doc: Document, ctx: dict) -> list:
+    validator = Draft7Validator(ctx["schema"], format_checker=FormatChecker())
+    return sorted(validator.iter_errors(_jsonify(doc.frontmatter)), key=str)
+
+
+def _format_errors(errors) -> str:
+    return "; ".join(f"{'/'.join(str(p) for p in e.path) or '(root)'}: {e.message}"
+                     for e in errors)
+
+
 def check_frontmatter_schema(doc: Document, ctx: dict) -> tuple[bool, str]:
-    schema = ctx["schema"]
-    validator = Draft7Validator(schema, format_checker=FormatChecker())
-    errors = sorted(validator.iter_errors(_jsonify(doc.frontmatter)), key=str)
+    """Frontmatter *wellformedness*: type, format, pattern, and enum errors.
+    Missing required fields are completeness, checked by frontmatter-complete."""
+    errors = [e for e in _schema_errors(doc, ctx) if e.validator != "required"]
     if not errors:
         return True, "Frontmatter is valid against the schema."
-    msgs = "; ".join(f"{'/'.join(str(p) for p in e.path) or '(root)'}: {e.message}"
-                     for e in errors)
-    return False, f"Frontmatter schema errors: {msgs}"
+    return False, f"Frontmatter schema errors: {_format_errors(errors)}"
+
+
+def check_frontmatter_complete(doc: Document, ctx: dict) -> tuple[bool, str]:
+    """Frontmatter *completeness*: every schema-required field is present."""
+    errors = [e for e in _schema_errors(doc, ctx) if e.validator == "required"]
+    if not errors:
+        return True, "All required frontmatter fields are present."
+    return False, f"Missing required frontmatter: {_format_errors(errors)}"
 
 
 def check_required_sections(doc: Document, ctx: dict) -> tuple[bool, str]:
@@ -133,8 +150,12 @@ def check_dates_consistent(doc: Document, ctx: dict) -> tuple[bool, str]:
     dates = doc.frontmatter.get("dates") or {}
     created = _as_date(dates.get("created"))
     target = _as_date(dates.get("target"))
+    if created is None and dates.get("created") is not None:
+        return False, f"dates.created is not a valid ISO date: {dates.get('created')!r}"
+    if target is None and dates.get("target") is not None:
+        return False, f"dates.target is not a valid ISO date: {dates.get('target')!r}"
     if created is None or target is None:
-        return False, "dates.created and dates.target must be valid ISO dates."
+        return True, "Date(s) not set yet (presence is checked by frontmatter-complete)."
     if target < created:
         return False, f"target ({target}) is before created ({created})."
     return True, f"Dates consistent (created {created} → target {target})."
@@ -143,7 +164,9 @@ def check_dates_consistent(doc: Document, ctx: dict) -> tuple[bool, str]:
 def check_unique_id(doc: Document, ctx: dict) -> tuple[bool, str]:
     if not doc.id:
         return False, "Document has no id."
-    others = [p for p in ctx.get("id_index", {}).get(doc.id, []) if p != doc.path]
+    me = Path(doc.path).resolve()
+    others = [p for p in ctx.get("id_index", {}).get(doc.id, [])
+              if Path(p).resolve() != me]
     if others:
         return False, f"id '{doc.id}' also used by: {', '.join(others)}"
     return True, f"id '{doc.id}' is unique."
@@ -371,6 +394,7 @@ def check_references_risk(doc: Document, ctx: dict) -> tuple[bool, str]:
 
 CHECKS: dict[str, Callable[[Document, dict], tuple[bool, str]]] = {
     "frontmatter-schema": check_frontmatter_schema,
+    "frontmatter-complete": check_frontmatter_complete,
     "required-sections": check_required_sections,
     "measurable-success-criteria": check_measurable_success_criteria,
     "risks-have-owner-and-mitigation": check_risks_owner_mitigation,
@@ -390,11 +414,29 @@ CHECKS: dict[str, Callable[[Document, dict], tuple[bool, str]]] = {
 }
 
 
+def _effective_blocking(spec: dict, doc: Document) -> bool:
+    """Interpret the criteria `blocking` value.
+
+    true/"always"  -> blocks at any status (integrity: malformed data)
+    "once-proposed" -> blocks once status is proposed or beyond; advisory for
+                       drafts (completeness: WIP is never punished)
+    false/"never"  -> advisory
+    """
+    b = spec.get("blocking", True)
+    if b in (True, "always"):
+        return True
+    if b in (False, "never"):
+        return False
+    if b == "once-proposed":
+        return str(doc.frontmatter.get("status", "draft")).lower() != "draft"
+    return bool(b)
+
+
 def run_structural(doc: Document, spec: dict, ctx: dict) -> CheckResult:
     """Run one structural check described by a criteria `spec` dict."""
     check_id = spec["id"]
     fn = CHECKS.get(check_id)
-    blocking = bool(spec.get("blocking", True))
+    blocking = _effective_blocking(spec, doc)
     if fn is None:
         return CheckResult(check_id, False, blocking,
                            f"Unknown structural check '{check_id}'.", kind="structural")
