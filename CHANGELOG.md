@@ -3,6 +3,16 @@
 All notable changes to docassert. Format follows [Keep a Changelog](https://keepachangelog.com/);
 versions follow [SemVer](https://semver.org/).
 
+## [0.9.0] — 2026-07-03
+
+### Added
+- Projects v2 board support in the bridge: `bridge create-board --title`, and
+  `bridge scaffold --project-number N [--init-board]` mirrors every managed
+  issue onto the board with Type (Feature/Story), Doc, and PMO Project fields.
+  Board calls use a separate project-scoped token (`--board-token-env`,
+  default PROJECTS_TOKEN), so the issues layer keeps the least-privilege
+  default credential.
+
 ## [0.8.1] — 2026-07-02
 
 ### Fixed

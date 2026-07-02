@@ -247,3 +247,76 @@ def test_add_sub_issue_still_raises_on_real_errors(tmp_path):
     import pytest
     with pytest.raises(GhError):
         add_sub_issue(BoomGh(), "N1", "N2")
+
+
+# ── board ops ────────────────────────────────────────────────────────────────
+class BoardGh(FakeGh):
+    """GraphQL router for Projects v2 shapes."""
+
+    def __init__(self, existing_fields=()):
+        super().__init__()
+        self.gql: list[str] = []
+        self._fields = list(existing_fields)
+
+    def graphql(self, query, **vars_):
+        self.gql.append(query)
+        if "viewer" in query:
+            return {"viewer": {"id": "U1", "login": "tester"}}
+        if "createProjectV2(" in query:
+            return {"createProjectV2": {"projectV2": {"id": "P1", "number": 7,
+                                                      "title": vars_.get("title")}}}
+        if "projectV2(number" in query:
+            nodes = [{"id": f"F-{n}", "name": n, "dataType": "TEXT"}
+                     for n in self._fields]
+            if "Type" in self._fields:
+                for node in nodes:
+                    if node["name"] == "Type":
+                        node["dataType"] = "SINGLE_SELECT"
+                        node["options"] = [{"id": "O1", "name": "Feature"},
+                                           {"id": "O2", "name": "Story"}]
+            return {"user": {"projectV2": {"id": "P1", "title": "Board",
+                                           "fields": {"nodes": nodes}}}}
+        if "createProjectV2Field" in query:
+            self._fields.append(vars_["n"])
+            return {"createProjectV2Field": {"projectV2Field": {"id": "F-new"}}}
+        if "addProjectV2ItemById" in query:
+            return {"addProjectV2ItemById": {"item": {"id": "I1"}}}
+        if "updateProjectV2ItemFieldValue" in query:
+            return {"updateProjectV2ItemFieldValue": {"projectV2Item": {"id": "I1"}}}
+        return {}
+
+
+def test_create_project():
+    from docassert.bridge import board
+    gh = BoardGh()
+    proj = board.create_project(gh, "Refuge for Humans")
+    assert proj["number"] == 7 and proj["title"] == "Refuge for Humans"
+
+
+def test_ensure_fields_creates_missing():
+    from docassert.bridge import board
+    gh = BoardGh(existing_fields=["Status"])
+    project = board.ensure_fields(gh, "tester", 7)
+    assert set(project["fields"]) >= {"Type", "Doc", "PMO Project"}
+
+
+def test_scaffold_syncs_board(tmp_path):
+    plan = build_bridge_plan(_tree(tmp_path))
+    existing = []
+    for i, f in enumerate(plan.features):
+        e = _mk_issue(200 + i, f.id, feature_title(f))
+        e["body"] = feature_body(f, None)
+        existing.append(e)
+        for j, s in enumerate(f.stories):
+            from docassert.bridge.plan import story_title
+            e2 = _mk_issue(300 + i * 10 + j, s.id, story_title(s))
+            e2["body"] = story_body(s, None)
+            existing.append(e2)
+    gh = FakeGh(existing)
+    bgh = BoardGh(existing_fields=["Type", "Doc", "PMO Project"])
+    actions = ops.scaffold(plan, gh, "o/r",
+                           board_cfg={"gh": bgh, "owner": "tester", "number": 7,
+                                      "init": False})
+    assert any("5 item(s) synced" in a for a in actions)
+    adds = [q for q in bgh.gql if "addProjectV2ItemById" in q]
+    assert len(adds) == 5
