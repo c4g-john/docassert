@@ -58,6 +58,7 @@ flagged as TODOs, never invented). The skill's source is
 | `docassert projects [--out] [--check]` | Generate / verify the project registry. |
 | `docassert new <kind> --project ID` | Scaffold a document from its template with identity filled in (`new project --code XYZ` auto-numbers the id); suggests the next free item ids. |
 | `docassert init [DIR]` | Scaffold the default config into a repo. |
+| `docassert bridge <action> --repo O/N` | Execution bridge: `scaffold` Features/Stories from approved user stories, `reconcile` (police the board against the docs), `status` (delivery figures). Needs the GitHub CLI. |
 | `docassert extract <file>` | Extract plain text from a source `.docx` / `.pdf` / `.md` / `.txt` (the first step of doc-to-pmo conversion). Needs the `convert` extra: `pip install "docassert[convert]"`. |
 
 Every document-reading command accepts `--documents-dir` (default `documents/`).

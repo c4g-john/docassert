@@ -3,6 +3,17 @@
 All notable changes to docassert. Format follows [Keep a Changelog](https://keepachangelog.com/);
 versions follow [SemVer](https://semver.org/).
 
+## [0.8.0] — 2026-07-02
+
+### Added
+- **The execution bridge** (`docassert bridge scaffold|reconcile|status`):
+  scaffolds GitHub Features (product requirements) and Stories (approved user
+  stories) as parent/sub-issues, polices the board against the documents
+  (`scope:unverified` / `scope:orphaned` labels, one pinned scope report,
+  non-zero exit on drift), and reads delivery progress. Requires the GitHub
+  CLI; `--dry-run` prints planned mutations. Scope flows documents → GitHub
+  only; the bridge never edits documents.
+
 ## [Unreleased]
 
 ### Added

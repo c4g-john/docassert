@@ -289,6 +289,42 @@ def cmd_new(args: argparse.Namespace) -> int:
     return 0
 
 
+
+
+def cmd_bridge(args: argparse.Namespace) -> int:
+    """Execution bridge: scaffold/police/read the GitHub board from the docs.
+    Scope flows documents -> GitHub only; the bridge never edits documents."""
+    from .bridge import build_bridge_plan, ops
+    from .bridge import gh as ghmod
+
+    plan = build_bridge_plan(args.documents_dir)
+    gh = ghmod.DryRunner() if getattr(args, "dry_run", False) else ghmod.GhRunner()
+
+    if args.action == "scaffold":
+        actions = ops.scaffold(plan, gh, args.repo, docs_url=args.docs_url)
+        for a in actions:
+            print(f"docassert bridge: {a}")
+        if isinstance(gh, ghmod.DryRunner):
+            print(f"docassert bridge: dry run — {len(gh.planned)} mutation(s) planned")
+            for m in gh.planned:
+                print(f"  {m}")
+        return 0
+    if args.action == "reconcile":
+        lines, code = ops.reconcile(plan, gh, args.repo)
+        for line in lines:
+            print(f"docassert bridge: {line}")
+        return code
+    if args.action == "status":
+        data = ops.status(plan, gh, args.repo)
+        sys.stdout.write(ops.to_json(data) if args.json else
+                         ops.render_status(data) + "\n")
+        if args.json and args.out:
+            Path(args.out).write_text(ops.to_json(data))
+        return 0
+    print(f"docassert bridge: unknown action {args.action!r}", file=sys.stderr)
+    return 2
+
+
 def main(argv: list[str] | None = None) -> int:
     from . import __version__
     parser = argparse.ArgumentParser(prog="docassert",
@@ -366,6 +402,18 @@ def main(argv: list[str] | None = None) -> int:
     n.add_argument("--out", help="Write to this path instead of the default location.")
     docs_dir_opt(n)
     n.set_defaults(func=cmd_new)
+
+
+    b = sub.add_parser("bridge", help="Execution bridge: scaffold and police the GitHub board from approved stories.")
+    b.add_argument("action", choices=["scaffold", "reconcile", "status"],
+                   help="scaffold: docs -> issues/board · reconcile: police the board · status: delivery figures.")
+    b.add_argument("--repo", required=True, help="Target GitHub repo (OWNER/NAME) holding the issues.")
+    b.add_argument("--docs-url", help="Base URL of the documents repo, for source links in issue bodies.")
+    b.add_argument("--dry-run", action="store_true", help="Print planned mutations without executing them.")
+    b.add_argument("--json", action="store_true", help="status: emit JSON.")
+    b.add_argument("--out", help="status --json: also write to this path.")
+    docs_dir_opt(b)
+    b.set_defaults(func=cmd_bridge)
 
     args = parser.parse_args(argv)
     return args.func(args)
