@@ -3,7 +3,7 @@
 All notable changes to docassert. Format follows [Keep a Changelog](https://keepachangelog.com/);
 versions follow [SemVer](https://semver.org/).
 
-## [Unreleased]
+## [0.7.1] — 2026-07-02
 
 ### Changed
 - Internal: split the 546-line `status.py` into a `docassert.status` package
