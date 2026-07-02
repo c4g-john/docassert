@@ -23,6 +23,9 @@ def test_packaged_data_mirrors_root_config():
                 f"{name}/{fn} drifted between the repo root and packaged _data"
     assert filecmp.cmp(ROOT / "consistency.yaml",
                        config.DATA_DIR / "consistency.yaml", shallow=False)
+    assert filecmp.cmp(ROOT / "skills" / "doc-to-pmo" / "SKILL.md",
+                       config.DATA_DIR / "skills" / "doc-to-pmo" / "SKILL.md",
+                       shallow=False), "doc-to-pmo skill drifted between root and packaged copy"
 
 
 # ── resolution: packaged default when there's no local config ───────────────
@@ -52,8 +55,19 @@ def test_unknown_kind_raises(monkeypatch, tmp_path):
 # ── init scaffolds, and is idempotent ──────────────────────────────────────
 def test_init_scaffolds_defaults(tmp_path):
     created = config.init(tmp_path)
-    assert set(created) == {"criteria", "schema", "profiles", "templates", "consistency.yaml"}
+    assert set(created) == {"criteria", "schema", "profiles", "templates",
+                            "consistency.yaml", ".claude/skills"}
     assert (tmp_path / "criteria" / "charter.criteria.yaml").is_file()
     assert (tmp_path / "schema" / "project.schema.json").is_file()
     assert (tmp_path / "consistency.yaml").is_file()
+    assert (tmp_path / ".claude" / "skills" / "doc-to-pmo" / "SKILL.md").is_file()
     assert config.init(tmp_path) == []  # second run creates nothing
+
+
+def test_init_keeps_existing_skills(tmp_path):
+    mine = tmp_path / ".claude" / "skills"
+    mine.mkdir(parents=True)
+    (mine / "my-skill.md").write_text("mine", encoding="utf-8")
+    created = config.init(tmp_path)
+    assert ".claude/skills" not in created          # existing dir left alone
+    assert (mine / "my-skill.md").read_text() == "mine"

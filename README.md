@@ -37,7 +37,11 @@ docassert pages --out _site           # a portfolio dashboard + a page per proje
 Config resolves **local override → packaged default**: docassert ships sensible
 defaults, and your repo's own `criteria/` (or `schema/`, `profiles/`,
 `consistency.yaml`) wins when present. `docassert init` copies the defaults in so
-you can customize them.
+you can customize them — including the **doc-to-pmo Claude skill** into
+`.claude/skills/`, so Claude Code in your repo knows how to convert existing
+Word/PDF documents into testable docassert documents (faithfully — gaps are
+flagged as TODOs, never invented). The skill's source is
+[`skills/doc-to-pmo/SKILL.md`](skills/doc-to-pmo/SKILL.md).
 
 ## Commands
 
