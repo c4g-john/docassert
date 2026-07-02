@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 660 370" font-family="ui-monospace,Menlo,Consolas,monospace" font-size="13">
+  <rect width="660" height="370" rx="12" fill="#0d1117"/>
+  <rect width="660" height="36" rx="12" fill="#161b22"/>
+  <rect y="24" width="660" height="12" fill="#161b22"/>
+  <circle cx="22" cy="18" r="6" fill="#ff5f57"/><circle cx="42" cy="18" r="6" fill="#febc2e"/><circle cx="62" cy="18" r="6" fill="#28c840"/>
+  <text x="330" y="23" text-anchor="middle" fill="#8b949e" font-size="12">docassert — unit testing for business documents</text>
+  <text x="22" y="71" opacity="0"><tspan fill="#5b9bff">$ </tspan><tspan fill="#e6edf3">docassert validate documents/PRJ-001-AUR/charter.md</tspan><animate attributeName="opacity" values="0;0;1;1" keyTimes="0;0.0526;0.0526;1" dur="19.0s" repeatCount="indefinite"/></text>
+<text x="22" y="92" opacity="0">  <tspan fill="#8b949e">✓ frontmatter-schema: valid against the schema</tspan><animate attributeName="opacity" values="0;0;1;1" keyTimes="0;0.1053;0.1053;1" dur="19.0s" repeatCount="indefinite"/></text>
+<text x="22" y="113" opacity="0">  <tspan fill="#8b949e">✓ required-sections: all 6 present and non-empty</tspan><animate attributeName="opacity" values="0;0;1;1" keyTimes="0;0.1579;0.1579;1" dur="19.0s" repeatCount="indefinite"/></text>
+<text x="22" y="134" opacity="0">  <tspan fill="#f85149">✗ BLOCK measurable-success-criteria:</tspan><animate attributeName="opacity" values="0;0;1;1" keyTimes="0;0.2105;0.2105;1" dur="19.0s" repeatCount="indefinite"/></text>
+<text x="22" y="155" opacity="0">  <tspan fill="#f85149">    &quot;make customers happier&quot; — no measurable threshold</tspan><animate attributeName="opacity" values="0;0;1;1" keyTimes="0;0.2632;0.2632;1" dur="19.0s" repeatCount="indefinite"/></text>
+<text x="22" y="176" opacity="0"><tspan fill="#f85149">✗ 1 blocking failure — merge blocked.</tspan><animate attributeName="opacity" values="0;0;1;1" keyTimes="0;0.3158;0.3158;1" dur="19.0s" repeatCount="indefinite"/></text>
+<text x="22" y="218" opacity="0"><tspan fill="#5b9bff">$ </tspan><tspan fill="#e6edf3">vim charter.md    # → &quot;CSAT rises above 4.5 / 5&quot;</tspan><animate attributeName="opacity" values="0;0;1;1" keyTimes="0;0.4211;0.4211;1" dur="19.0s" repeatCount="indefinite"/></text>
+<text x="22" y="239" opacity="0"><tspan fill="#5b9bff">$ </tspan><tspan fill="#e6edf3">docassert validate documents/PRJ-001-AUR/charter.md</tspan><animate attributeName="opacity" values="0;0;1;1" keyTimes="0;0.4737;0.4737;1" dur="19.0s" repeatCount="indefinite"/></text>
+<text x="22" y="260" opacity="0">  <tspan fill="#8b949e">✓ measurable-success-criteria: all 3 state a threshold</tspan><animate attributeName="opacity" values="0;0;1;1" keyTimes="0;0.5263;0.5263;1" dur="19.0s" repeatCount="indefinite"/></text>
+<text x="22" y="281" opacity="0"><tspan fill="#2ea043">✓ All structural checks passed — clear to merge.</tspan><animate attributeName="opacity" values="0;0;1;1" keyTimes="0;0.5789;0.5789;1" dur="19.0s" repeatCount="indefinite"/></text>
+<text x="22" y="323" opacity="0"><tspan fill="#5b9bff">$ </tspan><tspan fill="#e6edf3">docassert status --project PRJ-001-AUR</tspan><animate attributeName="opacity" values="0;0;1;1" keyTimes="0;0.6842;0.6842;1" dur="19.0s" repeatCount="indefinite"/></text>
+<text x="22" y="344" opacity="0">  <tspan fill="#2ea043">Aurora — Customer Onboarding ● GREEN   (derived, never typed)</tspan><animate attributeName="opacity" values="0;0;1;1" keyTimes="0;0.7368;0.7368;1" dur="19.0s" repeatCount="indefinite"/></text>
+</svg>

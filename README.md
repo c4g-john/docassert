@@ -4,6 +4,8 @@
 [![Python](https://img.shields.io/pypi/pyversions/docassert)](https://pypi.org/project/docassert/)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 
+![docassert demo — a weak charter is blocked, fixed, and cleared](https://raw.githubusercontent.com/c4g-john/docassert/main/docs/demo.svg)
+
 **Unit testing for business documents.** Validate structured Markdown documents
 (charters, BRDs, PRDs, risk registers, …) against a configurable audit standard:
 deterministic structural checks that gate a merge, plus optional AI-graded
