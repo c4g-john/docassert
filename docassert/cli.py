@@ -300,8 +300,31 @@ def cmd_bridge(args: argparse.Namespace) -> int:
     plan = build_bridge_plan(args.documents_dir)
     gh = ghmod.DryRunner() if getattr(args, "dry_run", False) else ghmod.GhRunner()
 
+    if args.action == "create-board":
+        from .bridge import board as board_mod
+        token = os.environ.get(args.board_token_env, "")
+        if not token and not getattr(args, "dry_run", False):
+            print(f"docassert bridge: no token in ${args.board_token_env}", file=sys.stderr)
+            return 2
+        bgh = gh if isinstance(gh, ghmod.DryRunner) else ghmod.GhRunner(token=token)
+        proj = board_mod.create_project(bgh, args.title or "PMO board")
+        print(f"docassert bridge: created project #{proj.get('number')} '{proj.get('title')}'")
+        return 0
+
+    board_cfg = None
+    if args.project_number:
+        token = os.environ.get(args.board_token_env, "")
+        if not token and not getattr(args, "dry_run", False):
+            print(f"docassert bridge: no token in ${args.board_token_env} "
+                  "(needed for --project-number)", file=sys.stderr)
+            return 2
+        bgh = gh if isinstance(gh, ghmod.DryRunner) else ghmod.GhRunner(token=token)
+        board_cfg = {"gh": bgh, "owner": args.project_owner or args.repo.split("/")[0],
+                     "number": args.project_number, "init": args.init_board}
+
     if args.action == "scaffold":
-        actions = ops.scaffold(plan, gh, args.repo, docs_url=args.docs_url)
+        actions = ops.scaffold(plan, gh, args.repo, docs_url=args.docs_url,
+                               board_cfg=board_cfg)
         for a in actions:
             print(f"docassert bridge: {a}")
         if isinstance(gh, ghmod.DryRunner):
@@ -405,13 +428,19 @@ def main(argv: list[str] | None = None) -> int:
 
 
     b = sub.add_parser("bridge", help="Execution bridge: scaffold and police the GitHub board from approved stories.")
-    b.add_argument("action", choices=["scaffold", "reconcile", "status"],
+    b.add_argument("action", choices=["scaffold", "reconcile", "status", "create-board"],
                    help="scaffold: docs -> issues/board · reconcile: police the board · status: delivery figures.")
     b.add_argument("--repo", required=True, help="Target GitHub repo (OWNER/NAME) holding the issues.")
     b.add_argument("--docs-url", help="Base URL of the documents repo, for source links in issue bodies.")
     b.add_argument("--dry-run", action="store_true", help="Print planned mutations without executing them.")
     b.add_argument("--json", action="store_true", help="status: emit JSON.")
     b.add_argument("--out", help="status --json: also write to this path.")
+    b.add_argument("--title", help="create-board: the new project's title.")
+    b.add_argument("--project-owner", help="Board owner login (default: the repo owner).")
+    b.add_argument("--project-number", type=int, help="Projects v2 board number to sync items onto.")
+    b.add_argument("--init-board", action="store_true", help="Ensure the Type/Doc/PMO Project fields exist.")
+    b.add_argument("--board-token-env", default="PROJECTS_TOKEN",
+                   help="Env var holding the project-scoped token (default: PROJECTS_TOKEN).")
     docs_dir_opt(b)
     b.set_defaults(func=cmd_bridge)
 

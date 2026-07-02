@@ -46,8 +46,14 @@ def _index(issues: list[dict]) -> dict[str, dict]:
 
 
 def scaffold(plan: BridgePlan, gh: G.GhRunner, repo: str,
-             docs_url: str | None = None) -> list[str]:
-    """Make the repo's issues match the plan. Returns human-readable actions."""
+             docs_url: str | None = None,
+             board_cfg: dict | None = None) -> list[str]:
+    """Make the repo's issues match the plan. Returns human-readable actions.
+
+    board_cfg (optional): {"gh": GhRunner with project scope, "owner": login,
+    "number": int, "init": bool} — mirrors every managed issue onto the
+    Projects v2 board with Type/Doc/PMO Project fields.
+    """
     actions: list[str] = []
     for name, (color, desc) in LABELS.items():
         G.ensure_label(gh, repo, name, color, desc)
@@ -79,6 +85,28 @@ def scaffold(plan: BridgePlan, gh: G.GhRunner, repo: str,
             pnode, cnode = feat_issue.get("node_id"), story_issue.get("node_id")
             if pnode and cnode:
                 G.add_sub_issue(gh, pnode, cnode)
+
+    if board_cfg:
+        from . import board as B
+        bgh = board_cfg["gh"]
+        if board_cfg.get("init"):
+            project = B.ensure_fields(bgh, board_cfg["owner"], board_cfg["number"])
+            actions.append(f"board: fields ensured on '{project['title']}'")
+        else:
+            project = B.get_project(bgh, board_cfg["owner"], board_cfg["number"])
+        entries = []
+        for f in plan.features:
+            issue = by_key.get(f.id)
+            if issue and issue.get("node_id"):
+                entries.append({"node_id": issue["node_id"], "doc_id": f.id,
+                                "type": "Feature", "pmo_project": f.project})
+            for s in f.stories:
+                sissue = by_key.get(s.id)
+                if sissue and sissue.get("node_id"):
+                    entries.append({"node_id": sissue["node_id"], "doc_id": s.id,
+                                    "type": "Story", "pmo_project": f.project})
+        n = B.sync_items(bgh, project, entries)
+        actions.append(f"board: {n} item(s) synced to '{project['title']}'")
 
     for sk in plan.skipped:
         actions.append(f"skipped {sk['id']}: {sk['reason']}")

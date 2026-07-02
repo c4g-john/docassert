@@ -15,11 +15,22 @@ class GhError(RuntimeError):
 
 
 class GhRunner:
-    """Executes gh commands. Tests substitute a fake with the same interface."""
+    """Executes gh commands. Tests substitute a fake with the same interface.
+
+    `token` overrides GH_TOKEN for this runner only, so board operations can
+    use the project-scoped credential while issue operations keep the
+    default one.
+    """
+
+    def __init__(self, token: str | None = None) -> None:
+        self._env: dict[str, str] | None = None
+        if token:
+            import os
+            self._env = dict(os.environ, GH_TOKEN=token)
 
     def run(self, args: list[str], input_: str | None = None) -> str:
         proc = subprocess.run(["gh", *args], capture_output=True, text=True,
-                              input=input_)
+                              input=input_, env=self._env)
         if proc.returncode != 0:
             raise GhError(proc.stderr.strip() or f"gh {' '.join(args)} failed")
         return proc.stdout
@@ -44,7 +55,8 @@ class DryRunner(GhRunner):
 
     MUTATING = ("-X POST", "-X PATCH", "-X PUT", "-X DELETE", "mutation")
 
-    def __init__(self) -> None:
+    def __init__(self, token: str | None = None) -> None:
+        super().__init__(token)
         self.planned: list[str] = []
 
     def run(self, args: list[str], input_: str | None = None) -> str:
