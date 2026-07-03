@@ -3,6 +3,13 @@
 All notable changes to docassert. Format follows [Keep a Changelog](https://keepachangelog.com/);
 versions follow [SemVer](https://semver.org/).
 
+## [0.12.1] — 2026-07-03
+
+### Changed
+- Default rubrics: user-story traces are graded as slices — a story may
+  implement part of its requirement with sibling stories covering the rest,
+  which is exactly how the execution bridge decomposes features.
+
 ## [0.12.0] — 2026-07-03
 
 ### Added

@@ -174,3 +174,8 @@ def test_packaged_defaults_carry_typed_rules():
     assert "contribute" in typed[0]["prompt"]
     verifies = [r for r in rules if r["relation"] == "verifies"][0]
     assert "slice" in verifies["prompt"]
+    story = [r for r in rules if r.get("child_type") == "US"][0]
+    assert "slice" in story["prompt"]
+    assert rules.index(story) < rules.index(
+        [r for r in rules if r["relation"] == "traces"
+         and not r.get("child_type") and not r.get("parent_type")][0])

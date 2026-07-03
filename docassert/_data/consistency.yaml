@@ -52,6 +52,13 @@ alignment:
       The child need not restate the metric; penalise only mechanisms that
       would not meaningfully move the parent outcome, or that contradict it.
   - relation: traces
+    child_type: US
+    prompt: >
+      The CHILD is a user story implementing the PARENT requirement. A story
+      may deliver one slice of the requirement, with sibling stories covering
+      the rest, so do not penalise a story for partial coverage. Penalise
+      stories that implement nothing the parent states or contradict it.
+  - relation: traces
     prompt: >
       Judge whether the CHILD requirement genuinely refines or implements the
       PARENT requirement it traces to, rather than being merely topically
