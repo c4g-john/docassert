@@ -143,13 +143,29 @@ DEFAULT_ALIGNMENT_LIMIT = 25
 
 def run_alignment_checks(graph, config) -> list[CheckResult]:
     edges = []  # (prompt, parent, child, relation)
+    seen: set[tuple[str, str, str]] = set()
+    # Rules match in order and the first matching rule grades a link, so a
+    # typed rule (child_type/parent_type) placed before the generic one can
+    # give e.g. PR->BR traces a contribution rubric while other traces keep
+    # the refinement rubric.
     for rule in config.get("alignment", []):
         relation, prompt = rule["relation"], rule.get("prompt", "").strip()
+        child_type = rule.get("child_type")
+        parent_type = rule.get("parent_type")
         for child in graph.all_items():
+            if child_type and child.type != child_type:
+                continue
             for target in child.targets(relation):
                 parent = graph.canonical(target)
-                if parent is not None:
-                    edges.append((prompt, parent, child, relation))
+                if parent is None:
+                    continue
+                if parent_type and parent.type != parent_type:
+                    continue
+                key = (child.id, relation, parent.id)
+                if key in seen:
+                    continue
+                seen.add(key)
+                edges.append((prompt, parent, child, relation))
 
     if not edges:
         return []

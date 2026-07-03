@@ -3,6 +3,20 @@
 All notable changes to docassert. Format follows [Keep a Changelog](https://keepachangelog.com/);
 versions follow [SemVer](https://semver.org/).
 
+## [0.12.0] — 2026-07-03
+
+### Added
+- Alignment rules accept optional `child_type` / `parent_type` filters, and
+  rules match in order with the first match grading a link — so different
+  relations can carry different rubrics.
+
+### Changed
+- Default rubrics are now calibrated per relation: PR→BR traces are judged as
+  contribution to a business outcome (a mechanism need not restate the KPI),
+  and `verifies` criteria are judged as testable slices (several criteria may
+  share one requirement without penalty). Reworded prompts change cache keys,
+  so affected links re-grade on the next keyed run.
+
 ## [0.11.0] — 2026-07-03
 
 ### Changed

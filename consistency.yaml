@@ -39,7 +39,18 @@ coverage:
 # (0 = no cap).
 alignment_limit: 25
 
+# Rules match in order; the first matching rule grades a link. Typed rules
+# (child_type/parent_type) come before the generic ones.
 alignment:
+  - relation: traces
+    child_type: PR
+    parent_type: BR
+    prompt: >
+      The PARENT is a business outcome or KPI; the CHILD is a product
+      mechanism tracing to it. Judge whether delivering the child would
+      plausibly and materially contribute to achieving the parent outcome.
+      The child need not restate the metric; penalise only mechanisms that
+      would not meaningfully move the parent outcome, or that contradict it.
   - relation: traces
     prompt: >
       Judge whether the CHILD requirement genuinely refines or implements the
@@ -47,8 +58,11 @@ alignment:
       related. Penalise links that don't actually follow from the parent.
   - relation: verifies
     prompt: >
-      Judge whether the acceptance criterion actually verifies the requirement
-      it targets: testable, and covering the requirement's intent.
+      Judge whether the acceptance criterion concretely and testably verifies
+      some aspect of the requirement it targets. Several criteria may share
+      one requirement, each covering a slice, so do not penalise a criterion
+      for leaving other clauses to its siblings. Penalise criteria that are
+      untestable, verify nothing the requirement states, or contradict it.
   - relation: tests
     prompt: >
       Judge whether the test case actually exercises the acceptance criterion

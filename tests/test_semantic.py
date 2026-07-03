@@ -120,3 +120,57 @@ def test_alignment_limit_zero_grades_everything(tmp_path, monkeypatch):
               "alignment_limit": 0}
     consistency.run_alignment_checks(graph, config)
     assert len(calls) == 4
+
+
+# ── typed rules: first match grades the link ─────────────────────────────────
+def _typed_graph():
+    from docassert.graph import Graph
+    g = Graph()
+    g.add(Item("TST-BR-001", "TST", "BR", "the business outcome", {},
+               "d.md", "brd", "approved", "S"))
+    g.add(Item("TST-PR-001", "TST", "PR", "the product mechanism",
+               {"traces": ["TST-BR-001"]}, "d.md", "prd", "approved", "S"))
+    g.add(Item("TST-US-001", "TST", "US", "the story",
+               {"traces": ["TST-PR-001"]}, "d.md", "user-story",
+               "approved", "S"))
+    return g
+
+
+TYPED_CONFIG = {"alignment": [
+    {"relation": "traces", "child_type": "PR", "parent_type": "BR",
+     "prompt": "contribution rubric"},
+    {"relation": "traces", "prompt": "refinement rubric"},
+], "alignment_limit": 0}
+
+
+def test_typed_rule_grades_matching_links_first(tmp_path, monkeypatch):
+    _use_tmp_cache(tmp_path, monkeypatch)
+    prompts = []
+    monkeypatch.setattr(semantic, "_grade", lambda p, c, m: (
+        prompts.append(p) or {"score": 1.0, "pass": True, "rationale": "ok"}))
+    results = consistency.run_alignment_checks(_typed_graph(), TYPED_CONFIG)
+    graded = {r.check_id for r in results if r.check_id.startswith("align:")}
+    assert graded == {"align:TST-PR-001-traces-TST-BR-001",
+                      "align:TST-US-001-traces-TST-PR-001"}
+    assert sorted(prompts) == ["contribution rubric", "refinement rubric"]
+
+
+def test_typed_rule_does_not_double_grade(tmp_path, monkeypatch):
+    _use_tmp_cache(tmp_path, monkeypatch)
+    calls = []
+    monkeypatch.setattr(semantic, "_grade", lambda p, c, m: (
+        calls.append((p, c)) or {"score": 1.0, "pass": True, "rationale": "ok"}))
+    consistency.run_alignment_checks(_typed_graph(), TYPED_CONFIG)
+    assert len(calls) == 2  # one grade per link, despite two matching relations
+
+
+def test_packaged_defaults_carry_typed_rules():
+    from docassert import config as config_mod
+    cfg = config_mod.read_consistency_config()
+    rules = cfg.get("alignment", [])
+    typed = [r for r in rules if r.get("child_type") == "PR"
+             and r.get("parent_type") == "BR"]
+    assert typed and rules.index(typed[0]) < len(rules) - 1
+    assert "contribute" in typed[0]["prompt"]
+    verifies = [r for r in rules if r["relation"] == "verifies"][0]
+    assert "slice" in verifies["prompt"]
