@@ -1,0 +1,35 @@
+name: bridge scaffold (PRJ-002-ENG)
+
+# Documents -> issues for the one portfolio project mapped to this repo.
+# The governing documents live in c4g-john/pmo-as-code-pmo; this repo's
+# GITHUB_TOKEN can only write issues here, which is the point.
+on:
+  schedule:
+    - cron: "27 9 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  scaffold:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          repository: c4g-john/pmo-as-code-pmo
+          path: pmo
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: "3.12"
+      - run: pip install "docassert==$(head -n1 pmo/.docassert-version)"
+      - name: Scaffold this repo's project
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          docassert bridge scaffold \
+            --documents-dir pmo/documents \
+            --project PRJ-002-ENG \
+            --repo "$GITHUB_REPOSITORY" \
+            --docs-url "https://github.com/c4g-john/pmo-as-code-pmo/blob/main"
