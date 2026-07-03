@@ -83,7 +83,8 @@ def _anchors(documents_dir: Path) -> dict[str, dict]:
             continue
         if doc.kind == "project" and doc.id:
             out[doc.id] = {"code": str(doc.frontmatter.get("code", "")),
-                           "name": str(doc.frontmatter.get("name", ""))}
+                           "name": str(doc.frontmatter.get("name", "")),
+                           "repo": str(doc.frontmatter.get("repo", "") or "")}
     return out
 
 
@@ -155,8 +156,39 @@ def build_bridge_plan(documents_dir: str | Path = "documents") -> BridgePlan:
                                  "reason": "; ".join(problems)})
             continue
         plan.projects.append({"id": proj_id, "code": code, "name": meta["name"],
+                              "repo": meta.get("repo", ""),
                               "features": list(features.values())})
     return plan
+
+
+def filter_plan(plan: BridgePlan, project: str) -> BridgePlan:
+    """A plan reduced to one project (matched by id or code). Unknown ids
+    yield an empty plan whose skipped list explains why."""
+    key = project.strip()
+    keep = [p for p in plan.projects
+            if p["id"] == key or p["code"] == key]
+    out = BridgePlan(projects=keep,
+                     skipped=[s for s in plan.skipped if s["id"] == key])
+    if not keep and not out.skipped:
+        out.skipped.append({"id": key, "reason": "no such project in the plan"})
+    return out
+
+
+def plans_by_repo(plan: BridgePlan) -> dict[str, BridgePlan]:
+    """Group a plan by each project's mapped repository (the `repo` field on
+    the project anchor). Projects sharing a repo share one sub-plan, so
+    reconciliation in that repo sees the union of their managed ids.
+    Raises ValueError naming any project without a mapping."""
+    unmapped = [p["id"] for p in plan.projects if not p.get("repo")]
+    if unmapped:
+        raise ValueError(
+            "no repo mapping on project anchor(s): " + ", ".join(unmapped)
+            + " (add `repo: OWNER/NAME` to project.md or pass --repo)")
+    groups: dict[str, BridgePlan] = {}
+    for proj in plan.projects:
+        groups.setdefault(proj["repo"],
+                          BridgePlan(skipped=plan.skipped)).projects.append(proj)
+    return groups
 
 
 def feature_title(f: Feature) -> str:

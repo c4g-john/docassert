@@ -248,7 +248,7 @@ def render_html(model) -> str:
         bad = scope.get("unverified", []) + scope.get("orphaned", [])
         if bad:
             items = "".join(
-                f'<li><a href="https://github.com/{esc(ex.get("repo", ""))}/issues/{i["number"]}">#{i["number"]}</a> {esc(i["title"])}</li>'
+                f'<li><a href="https://github.com/{esc(i.get("repo") or ex.get("repo") or "")}/issues/{i["number"]}">#{i["number"]}</a> {esc(i["title"])}</li>'
                 for i in bad)
             execution_html += (
                 f'<section><h2 style="color:var(--bad)">Scope · {len(bad)} unmatched item(s)</h2>'

@@ -349,3 +349,95 @@ def test_status_includes_scope_classification(tmp_path):
     assert data["repo"] == "o/r"
     assert [i["number"] for i in data["scope"]["unverified"]] == [2]
     assert [i["doc"] for i in data["scope"]["orphaned"]] == ["TST-US-999"]
+
+
+# ── project filter and per-repo mapping (ENG-US-001 / ENG-US-002) ────────────
+from docassert.bridge.plan import filter_plan, plans_by_repo  # noqa: E402
+
+ANCHOR2 = """---
+kind: project
+id: PRJ-002-TWO
+code: TWO
+name: Second Project
+sponsor: S
+status: active
+repo: owner/two-repo
+---
+
+## Overview
+
+x
+
+## Scope
+
+x
+"""
+
+PRD2 = PRD.replace("PRJ-001-TST", "PRJ-002-TWO").replace("TST", "TWO")
+STORIES2 = STORIES.replace("PRJ-001-TST", "PRJ-002-TWO").replace("TST", "TWO")
+
+
+def _two_project_tree(tmp_path, repo_one="owner/one-repo"):
+    docs = _tree(tmp_path)
+    if repo_one:
+        anchor = docs / "PRJ-001-TST" / "project.md"
+        anchor.write_text(anchor.read_text().replace(
+            "status: active", f"status: active\nrepo: {repo_one}"), encoding="utf-8")
+    d = docs / "PRJ-002-TWO"
+    d.mkdir()
+    (d / "project.md").write_text(ANCHOR2, encoding="utf-8")
+    (d / "prd.md").write_text(PRD2, encoding="utf-8")
+    (d / "user-story.md").write_text(STORIES2.format(status="approved"), encoding="utf-8")
+    return docs
+
+
+def test_filter_plan_by_id_and_code(tmp_path):
+    plan = build_bridge_plan(_two_project_tree(tmp_path))
+    assert len(plan.projects) == 2
+    only = filter_plan(plan, "PRJ-002-TWO")
+    assert [p["id"] for p in only.projects] == ["PRJ-002-TWO"]
+    by_code = filter_plan(plan, "TST")
+    assert [p["code"] for p in by_code.projects] == ["TST"]
+    missing = filter_plan(plan, "PRJ-999-NOPE")
+    assert not missing.projects and missing.skipped
+
+
+def test_plans_by_repo_routes_each_project(tmp_path):
+    plan = build_bridge_plan(_two_project_tree(tmp_path))
+    groups = plans_by_repo(plan)
+    assert set(groups) == {"owner/one-repo", "owner/two-repo"}
+    assert [p["id"] for p in groups["owner/one-repo"].projects] == ["PRJ-001-TST"]
+    assert [p["id"] for p in groups["owner/two-repo"].projects] == ["PRJ-002-TWO"]
+
+
+def test_plans_by_repo_shares_a_repo_as_a_union(tmp_path):
+    docs = _two_project_tree(tmp_path)
+    anchor = docs / "PRJ-002-TWO" / "project.md"
+    anchor.write_text(anchor.read_text().replace("owner/two-repo", "owner/one-repo"),
+                      encoding="utf-8")
+    plan = build_bridge_plan(docs)
+    groups = plans_by_repo(plan)
+    assert set(groups) == {"owner/one-repo"}
+    union = groups["owner/one-repo"]
+    assert len(union.projects) == 2
+    # both projects' ids are managed, so neither would be orphaned in reconcile
+    assert any(i.startswith("TST-") for i in union.managed_ids)
+    assert any(i.startswith("TWO-") for i in union.managed_ids)
+
+
+def test_plans_by_repo_names_unmapped_projects(tmp_path):
+    plan = build_bridge_plan(_two_project_tree(tmp_path, repo_one=None))
+    try:
+        plans_by_repo(plan)
+        raise AssertionError("expected ValueError")
+    except ValueError as exc:
+        assert "PRJ-001-TST" in str(exc) and "--repo" in str(exc)
+
+
+def test_anchor_without_repo_keeps_single_repo_mode_working(tmp_path):
+    # the original single-repo path: no repo fields, explicit --repo, unchanged
+    plan = build_bridge_plan(_tree(tmp_path))
+    assert plan.projects[0].get("repo", "") == ""
+    gh = FakeGh()
+    ops.scaffold(plan, gh, "o/r", docs_url=None)
+    assert any("issues" in " ".join(c) for c in gh.calls)
