@@ -3,6 +3,14 @@
 All notable changes to docassert. Format follows [Keep a Changelog](https://keepachangelog.com/);
 versions follow [SemVer](https://semver.org/).
 
+## [0.13.0] — 2026-07-03
+
+### Added
+- Project status pages render open risks as a table: ID, description, the
+  business requirements threatened, probability and impact (color-coded),
+  owner, and the full response text. The status model carries `description`,
+  `threatens`, and `response` per risk alongside the existing ratings.
+
 ## [0.12.1] — 2026-07-03
 
 ### Changed

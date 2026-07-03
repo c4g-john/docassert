@@ -5,6 +5,7 @@ lives in docassert.status.render.
 """
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from .. import config as config_mod
@@ -63,6 +64,10 @@ def _coverage(graph, config, code=None):
     return out
 
 
+_RISK_FIELD_RE = re.compile(
+    r"\s*(?:Probability|Impact|Owner|Response)\s*:", re.IGNORECASE)
+
+
 def _risks(graph, code=None):
     risks = []
     for item in graph.by_type.get("RISK", []):
@@ -70,11 +75,21 @@ def _risks(graph, code=None):
             continue
         prob = (_field_value(item.text, "probability") or "").lower()
         impact = (_field_value(item.text, "impact") or "").lower()
+        # The description is the item text up to the first metadata field;
+        # the response runs from its label to the end (it may hold clauses
+        # that _field_value would truncate at a sentence break).
+        m = _RISK_FIELD_RE.search(item.text)
+        description = (item.text[:m.start()] if m else item.text).strip()
+        rm = re.search(r"Response\s*:\s*(.+)$", item.text,
+                       re.IGNORECASE | re.DOTALL)
         risks.append({
             "id": item.id,
+            "description": description,
+            "threatens": item.links.get("threatens", []),
             "probability": prob or "?",
             "impact": impact or "?",
             "owner": _field_value(item.text, "owner") or "?",
+            "response": rm.group(1).strip() if rm else "",
             "score": _SEVERITY.get(prob, 0) * _SEVERITY.get(impact, 0),
         })
     return sorted(risks, key=lambda r: -r["score"])
