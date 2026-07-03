@@ -3,7 +3,7 @@
 All notable changes to docassert. Format follows [Keep a Changelog](https://keepachangelog.com/);
 versions follow [SemVer](https://semver.org/).
 
-## [0.10.1] — 2026-07-02
+## [0.10.1] — 2026-07-03
 
 ### Fixed
 - Bridge issue bodies now link Source paths relative to the docs repository
