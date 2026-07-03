@@ -113,6 +113,20 @@ def test_bodies_carry_marker_and_authority_note(tmp_path):
     assert f"<!-- docassert-bridge: {s.id} -->" in story_body(s, None)
 
 
+def test_doc_paths_relative_to_docs_repo_root(tmp_path):
+    """CI checks the docs repo out into a subdirectory; Source links must not
+    carry that checkout prefix (they resolve against the docs repo root)."""
+    docs = _tree(tmp_path / "pmo")
+    plan = build_bridge_plan(docs)
+    f = plan.features[0]
+    assert f.doc_path == "documents/PRJ-001-TST/prd.md"
+    assert f.stories[0].doc_path == "documents/PRJ-001-TST/user-story.md"
+    body = feature_body(f, "https://github.com/o/r/blob/main")
+    assert ("**Source:** https://github.com/o/r/blob/main/"
+            "documents/PRJ-001-TST/prd.md") in body
+    assert "/pmo/" not in body
+
+
 # ── ops against a fake runner ────────────────────────────────────────────────
 class FakeGh:
     """Records mutations; serves canned issue lists."""

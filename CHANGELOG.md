@@ -3,6 +3,14 @@
 All notable changes to docassert. Format follows [Keep a Changelog](https://keepachangelog.com/);
 versions follow [SemVer](https://semver.org/).
 
+## [0.10.1] — 2026-07-03
+
+### Fixed
+- Bridge issue bodies now link Source paths relative to the docs repository
+  root, so the links stay valid when CI checks the documents out into a
+  subdirectory (previously the checkout prefix leaked into the URL and the
+  link 404ed).
+
 ## [0.10.0] — 2026-07-03
 
 ### Added
