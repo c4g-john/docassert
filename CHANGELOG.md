@@ -3,6 +3,16 @@
 All notable changes to docassert. Format follows [Keep a Changelog](https://keepachangelog.com/);
 versions follow [SemVer](https://semver.org/).
 
+## [0.10.0] — 2026-07-03
+
+### Added
+- `bridge status --json` now includes read-only scope classification
+  (`scope.unverified` / `scope.orphaned`) alongside delivery figures.
+- `docassert pages --execution report.json` renders Delivery (stories closed
+  per feature, with progress bars) and Scope panels on project status pages,
+  next to the document-derived signals. Documents stay the scope authority;
+  the board supplies only execution state.
+
 ## [0.9.0] — 2026-07-03
 
 ### Added

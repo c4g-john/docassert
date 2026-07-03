@@ -24,3 +24,25 @@ def test_pages_emits_badges(tmp_path, monkeypatch):
     assert overall["schemaVersion"] == 1 and overall["message"] in {"green", "amber", "red"}
     aur = json.loads((out / "badges" / "PRJ-001-AUR.json").read_text())
     assert aur["label"] == "aur" and aur["message"] in {"green", "amber", "red"}
+
+
+def test_pages_execution_panels(tmp_path, monkeypatch):
+    import json
+    monkeypatch.chdir(ROOT)
+    exec_file = tmp_path / "execution.json"
+    exec_file.write_text(json.dumps({
+        "repo": "o/r",
+        "projects": [{"id": "PRJ-001-AUR",
+                      "features": [{"id": "AUR-PR-014", "issue": 5,
+                                    "stories_total": 2, "stories_closed": 1,
+                                    "closed": False}],
+                      "stories_closed": 1, "stories_total": 2}],
+        "scope": {"unverified": [], "orphaned": []},
+    }))
+    out = tmp_path / "site"
+    assert main(["pages", "--out", str(out), "--execution", str(exec_file)]) == 0
+    html = (out / "PRJ-001-AUR.html").read_text()
+    assert "Delivery · 1/2 stories closed" in html
+    assert "AUR-PR-014" in html and "Every open issue matches" in html
+    other = (out / "PRJ-002-ATL.html").read_text()
+    assert "Delivery ·" not in other   # no execution data, no panel
