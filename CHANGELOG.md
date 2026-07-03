@@ -3,6 +3,20 @@
 All notable changes to docassert. Format follows [Keep a Changelog](https://keepachangelog.com/);
 versions follow [SemVer](https://semver.org/).
 
+## [0.11.0] — 2026-07-03
+
+### Changed
+- `alignment_limit` now budgets API calls instead of links: grades already in
+  the semantic cache replay for free, so runs that persist `.docassert-cache`
+  (for example with `actions/cache`) walk the whole graph a budget at a time
+  instead of re-grading the same first links forever.
+- Advisory grading responses get more room (`max_tokens` 400 → 800), and a
+  response truncated mid-rationale is recovered instead of discarded — the
+  score and pass fields arrive before the rationale, so the grade survives
+  with a `[truncated]` marker.
+- `DOCASSERT_MODEL` / `DOCASSERT_CACHE` are now the preferred environment
+  variables; the legacy `DOCUNIT_*` names still work.
+
 ## [0.10.1] — 2026-07-03
 
 ### Fixed

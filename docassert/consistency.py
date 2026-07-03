@@ -18,6 +18,7 @@ from pathlib import Path
 import yaml
 
 from . import config as config_mod
+from . import semantic
 from .graph import build_graph
 from .models import CheckResult
 from .semantic import run_alignment
@@ -134,7 +135,9 @@ def check_profile_completeness(documents_dir: str | Path = "documents") -> Check
 # ── semantic (advisory) ────────────────────────────────────────────────────
 # Each alignment edge costs one API call, so a large graph could otherwise run
 # away on cost. Cap per run; tune with `alignment_limit` in consistency.yaml
-# (0 disables the cap).
+# (0 disables the cap). The cap budgets API calls, not links: grades already
+# in the semantic cache replay for free, so successive runs that persist
+# `.docassert-cache` walk the whole graph `alignment_limit` links at a time.
 DEFAULT_ALIGNMENT_LIMIT = 25
 
 
@@ -151,20 +154,29 @@ def run_alignment_checks(graph, config) -> list[CheckResult]:
     if not edges:
         return []
 
-    limit = int(config.get("alignment_limit", DEFAULT_ALIGNMENT_LIMIT) or 0)
-    note: CheckResult | None = None
-    if limit and len(edges) > limit:
-        note = CheckResult(
-            "alignment-limit", True, False,
-            f"graded {limit} of {len(edges)} link(s) — raise `alignment_limit` "
-            f"in consistency.yaml to grade more per run",
-            kind="semantic", score=None)
-        edges = edges[:limit]
-
     if not os.environ.get("ANTHROPIC_API_KEY"):
         return [CheckResult("alignment", True, False,
                             f"skipped — no ANTHROPIC_API_KEY ({len(edges)} link(s) to grade)",
                             kind="semantic", score=None)]
+
+    limit = int(config.get("alignment_limit", DEFAULT_ALIGNMENT_LIMIT) or 0)
+    note: CheckResult | None = None
+    if limit:
+        # Spend the budget on cache misses; cached grades replay for free.
+        fresh = [e for e in edges
+                 if not semantic.is_cached(e[0], semantic.alignment_content(
+                     e[1].text, e[2].text))]
+        if len(fresh) > limit:
+            over_budget = set(id(e) for e in fresh[limit:])
+            edges = [e for e in edges if id(e) not in over_budget]
+            note = CheckResult(
+                "alignment-limit", True, False,
+                f"graded {limit} of {len(fresh)} ungraded link(s) "
+                f"({len(edges) - limit} from cache) — raise `alignment_limit` in "
+                f"consistency.yaml, or persist `.docassert-cache` between runs "
+                f"to walk the rest",
+                kind="semantic", score=None)
+
     results = [run_alignment(f"align:{c.id}-{rel}-{p.id}", prompt, p.text, c.text)
                for prompt, p, c, rel in edges]
     if note is not None:

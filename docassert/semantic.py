@@ -9,12 +9,15 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 
 from .models import CheckResult, Document
 
-DEFAULT_MODEL = os.environ.get("DOCUNIT_MODEL", "claude-sonnet-5")
-CACHE_DIR = Path(os.environ.get("DOCUNIT_CACHE", ".docassert-cache"))
+DEFAULT_MODEL = (os.environ.get("DOCASSERT_MODEL")
+                 or os.environ.get("DOCUNIT_MODEL", "claude-sonnet-5"))
+CACHE_DIR = Path(os.environ.get("DOCASSERT_CACHE")
+                 or os.environ.get("DOCUNIT_CACHE", ".docassert-cache"))
 
 _SYSTEM = (
     "You are a meticulous document auditor. You are given one audit criterion "
@@ -53,6 +56,31 @@ def _cache_put(key: str, value: dict) -> None:
         pass  # caching is best-effort
 
 
+def _parse_grade(text: str) -> dict:
+    """Parse the model's JSON grade, tolerating prose wrappers and truncation.
+
+    Responses put score and pass before the free-text rationale, so a reply
+    that ran out of tokens mid-rationale still carries a usable grade.
+    """
+    start, end = text.find("{"), text.rfind("}")
+    if start != -1 and end > start:
+        try:
+            return json.loads(text[start:end + 1])
+        except json.JSONDecodeError:
+            pass
+    m = re.search(r'"score"\s*:\s*([0-9.]+)', text)
+    if m:
+        grade: dict = {"score": float(m.group(1))}
+        pm = re.search(r'"pass"\s*:\s*(true|false)', text)
+        if pm:
+            grade["pass"] = pm.group(1) == "true"
+        rm = re.search(r'"rationale"\s*:\s*"(.*)', text, re.DOTALL)
+        if rm:
+            grade["rationale"] = rm.group(1).rstrip('"').strip() + " [truncated]"
+        return grade
+    raise ValueError(f"no JSON in model response: {text[:120]!r}")
+
+
 def _grade(prompt: str, content: str, model: str) -> dict:
     """Call the Anthropic API and return the parsed JSON grade."""
     import anthropic  # imported lazily so structural-only runs need no dependency
@@ -62,7 +90,7 @@ def _grade(prompt: str, content: str, model: str) -> dict:
     # not set it. Grading is kept consistent by the strict JSON rubric instead.
     message = client.messages.create(
         model=model,
-        max_tokens=400,
+        max_tokens=800,
         system=_SYSTEM,
         messages=[{
             "role": "user",
@@ -71,11 +99,7 @@ def _grade(prompt: str, content: str, model: str) -> dict:
     )
     text = "".join(getattr(block, "text", "") for block in message.content
                    if getattr(block, "type", None) == "text").strip()
-    # tolerate models that wrap JSON in prose or fences
-    start, end = text.find("{"), text.rfind("}")
-    if start == -1 or end == -1:
-        raise ValueError(f"no JSON in model response: {text[:120]!r}")
-    return json.loads(text[start:end + 1])
+    return _parse_grade(text)
 
 
 def advisory(check_id: str, prompt: str, content: str,
@@ -117,8 +141,17 @@ def run_semantic(doc: Document, spec: dict, content: str) -> CheckResult:
     )
 
 
+def alignment_content(parent_text: str, child_text: str) -> str:
+    return f"PARENT:\n{parent_text}\n\nCHILD:\n{child_text}"
+
+
+def is_cached(prompt: str, content: str, model: str = DEFAULT_MODEL) -> bool:
+    """True when this grade can be replayed without an API call."""
+    return _cache_get(_cache_key(model, prompt, content)) is not None
+
+
 def run_alignment(check_id: str, prompt: str, parent_text: str,
                   child_text: str, threshold: float = 0.7) -> CheckResult:
     """Advisory: does the child item genuinely fulfil the parent it links to?"""
-    content = f"PARENT:\n{parent_text}\n\nCHILD:\n{child_text}"
-    return advisory(check_id, prompt, content, threshold=threshold)
+    return advisory(check_id, prompt, alignment_content(parent_text, child_text),
+                    threshold=threshold)
