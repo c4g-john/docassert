@@ -7,6 +7,7 @@ anywhere in the bridge, writes to documents/.
 """
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -52,6 +53,18 @@ class BridgePlan:
     @property
     def managed_ids(self) -> set[str]:
         return {f.id for f in self.features} | {s.id for s in self.stories}
+
+
+def _repo_rel(path: str, documents_dir: Path) -> str:
+    """Path relative to the docs repo root (the parent of documents_dir).
+
+    Issue bodies link Source as {docs_url}/{doc_path}, and docs_url points at
+    the docs repository. When CI checks that repository out into a
+    subdirectory, load paths carry the checkout prefix; stripping down to the
+    repo root keeps the links valid wherever the docs are checked out.
+    """
+    rel = os.path.relpath(path, documents_dir.parent)
+    return path if rel.startswith("..") else Path(rel).as_posix()
 
 
 def _title(item_text: str, limit: int = 64) -> str:
@@ -126,14 +139,17 @@ def build_bridge_plan(documents_dir: str | Path = "documents") -> BridgePlan:
                 feat = features.get(parent.id)
                 if feat is None:
                     feat = Feature(id=parent.id, text=parent.text,
-                                   doc_path=parent.doc_path, project=proj_id)
+                                   doc_path=_repo_rel(parent.doc_path,
+                                                      documents_dir),
+                                   project=proj_id)
                     feat.acceptance = [(a.id, a.text) for a in
                                        graph.children(parent.id, "verifies", "AC")]
                     for aid, _ in feat.acceptance:
                         feat.tests += [t.id for t in graph.children(aid, "tests", "TC")]
                     features[parent.id] = feat
-                feat.stories.append(Story(id=s.id, text=s.text,
-                                          feature_id=parent.id, doc_path=s.doc_path))
+                feat.stories.append(Story(
+                    id=s.id, text=s.text, feature_id=parent.id,
+                    doc_path=_repo_rel(s.doc_path, documents_dir)))
         if problems:
             plan.skipped.append({"id": proj_id,
                                  "reason": "; ".join(problems)})
