@@ -143,9 +143,27 @@ def render_html(model) -> str:
         + (";background:var(--amber)" if cov["gaps"] else "") + '"></div></div></div>'
         for cov in model["coverage"])
 
-    risks = "".join(
-        f'<li><code>{esc(r["id"])}</code> — {esc(r["probability"])}/{esc(r["impact"])}'
-        f' · owner {esc(r["owner"])}</li>' for r in model["risks"]) or "<li>None open.</li>"
+    def sev(value):
+        color = {"critical": "var(--bad)", "high": "var(--bad)",
+                 "medium": "var(--amber)", "low": "var(--ok)"}.get(
+                     value, "var(--muted)")
+        return f'<td style="color:{color};font-weight:600;">{esc(value)}</td>'
+
+    if model["risks"]:
+        risk_rows = "".join(
+            f'<tr><td><code>{esc(r["id"])}</code></td>'
+            f'<td>{esc(r["description"])}</td>'
+            f'<td>{", ".join(f"<code>{esc(b)}</code>" for b in r["threatens"]) or "—"}</td>'
+            + sev(r["probability"]) + sev(r["impact"])
+            + f'<td>{esc(r["owner"])}</td>'
+            f'<td>{esc(r["response"]) or "—"}</td></tr>'
+            for r in model["risks"])
+        risks = ('<table><thead><tr><th>ID</th><th>Risk</th><th>Threatens</th>'
+                 '<th>Probability</th><th>Impact</th><th>Owner</th>'
+                 '<th>Response</th></tr></thead>'
+                 f'<tbody>{risk_rows}</tbody></table>')
+    else:
+        risks = "<p>None open.</p>"
 
     problems = ""
     if model["broken_references"]:
@@ -262,7 +280,7 @@ def render_html(model) -> str:
   {document_set}
   {execution_html}
   {problems}
-  <section><h2>Open risks ({len(model['risks'])})</h2><ul>{risks}</ul></section>
+  <section><h2>Open risks ({len(model['risks'])})</h2>{risks}</section>
   <section><h2>Latest status report</h2><p>{report}</p></section>
   <section><h2>Documents ({c['total']})</h2>
     <table><thead><tr><th>Kind</th><th>ID</th><th>Status</th><th>Audit</th></tr></thead>

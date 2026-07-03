@@ -129,3 +129,36 @@ def test_render_project_page_has_back_link_and_scoped_title():
     assert 'href="index.html"' in out          # back to the portfolio index
     assert "Atlas" in out and "AMBER" in out
     assert "http://" not in out and "https://" not in out
+
+
+# ── the risk model carries the full story ────────────────────────────────────
+def test_risks_carry_description_threatens_and_response():
+    _cd_root()
+    m = S.build_status(ROOT / "documents")
+    r = next(r for r in m["risks"] if r["id"] == "AUR-RISK-001")
+    assert r["description"] and "Probability" not in r["description"]
+    assert r["threatens"]                     # links to the BRs at stake
+    assert r["response"]                      # the full mitigation text
+    assert r["probability"] in {"low", "medium", "high", "critical", "?"}
+
+
+def test_risks_tolerate_missing_fields():
+    from docassert.graph import Graph
+    from docassert.models import Item
+    from docassert.status.derive import _risks
+    g = Graph()
+    g.add(Item("XX-RISK-001", "XX", "RISK", "Bare risk with no fields yet.",
+               {}, "d.md", "risk-register", "draft", "S"))
+    (r,) = _risks(g)
+    assert r["description"] == "Bare risk with no fields yet."
+    assert r["response"] == "" and r["probability"] == "?"
+
+
+def test_render_html_risk_table():
+    _cd_root()
+    out = S.render_html(S.build_status(ROOT / "documents"))
+    assert "<th>Risk</th>" in out and "<th>Response</th>" in out
+    assert "<th>Threatens</th>" in out and "<th>Owner</th>" in out
+    # severity cells are colored
+    assert 'style="color:var(--bad);font-weight:600;">high</td>' in out \
+        or 'style="color:var(--amber);font-weight:600;">medium</td>' in out
