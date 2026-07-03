@@ -8,6 +8,10 @@ on:
     - cron: "27 9 * * *"
   workflow_dispatch:
 
+concurrency:
+  group: bridge-scaffold
+  cancel-in-progress: false
+
 permissions:
   contents: read
   issues: write

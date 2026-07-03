@@ -5,6 +5,10 @@ on:
   issues:
     types: [closed]
 
+concurrency:
+  group: feature-closeout
+  cancel-in-progress: false
+
 permissions:
   issues: write
 
