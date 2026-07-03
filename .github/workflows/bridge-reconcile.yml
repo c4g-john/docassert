@@ -1,0 +1,36 @@
+name: bridge reconcile (PRJ-002-ENG)
+
+# Polices this repo's issues against the documented scope of its project.
+# A red run is the alarm.
+on:
+  issues:
+    types: [opened, reopened, edited, closed]
+  schedule:
+    - cron: "57 9 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  reconcile:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          repository: c4g-john/pmo-as-code-pmo
+          path: pmo
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: "3.12"
+      - run: pip install "docassert==$(head -n1 pmo/.docassert-version)"
+      - name: Reconcile against documented scope
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          docassert bridge reconcile \
+            --documents-dir pmo/documents \
+            --project PRJ-002-ENG \
+            --repo "$GITHUB_REPOSITORY"

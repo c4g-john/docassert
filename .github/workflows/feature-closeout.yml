@@ -1,0 +1,41 @@
+name: feature close-out
+
+# When a Story closes, close its parent Feature once every sibling is closed.
+on:
+  issues:
+    types: [closed]
+
+permissions:
+  issues: write
+
+jobs:
+  closeout:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Close the parent when all sub-issues are closed
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE_NODE: ${{ github.event.issue.node_id }}
+          QUERY: |
+            query($id: ID!) {
+              node(id: $id) {
+                ... on Issue {
+                  parent { id number state
+                    subIssues(first: 100) { nodes { state } } }
+                }
+              }
+            }
+        run: |
+          parent=$(gh api graphql -f query="$QUERY" -f id="$ISSUE_NODE" \
+            -q '.data.node.parent // empty')
+          [ -z "$parent" ] && echo "no parent; nothing to do" && exit 0
+          number=$(echo "$parent" | jq -r '.number')
+          state=$(echo "$parent" | jq -r '.state')
+          open=$(echo "$parent" | jq -r '[.subIssues.nodes[] | select(.state != "CLOSED")] | length')
+          if [ "$state" != "CLOSED" ] && [ "$open" = "0" ]; then
+            gh issue close "$number" --repo "$GITHUB_REPOSITORY" \
+              --comment "All stories under this feature are closed; closing per the bridge."
+          else
+            echo "parent #$number has $open open story(ies)"
+          fi
