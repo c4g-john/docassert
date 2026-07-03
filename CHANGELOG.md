@@ -3,6 +3,19 @@
 All notable changes to docassert. Format follows [Keep a Changelog](https://keepachangelog.com/);
 versions follow [SemVer](https://semver.org/).
 
+## [0.14.0] — 2026-07-03
+
+### Added
+- Bridge commands accept `--project` (PRJ-NNN-CODE id or bare code) to scope
+  the plan to one project.
+- Project anchors accept an optional `repo: OWNER/NAME` field (spec 0.3.2).
+  Without `--repo`, bridge commands route each project to its mapped
+  repository; projects sharing a repository reconcile as a union, and
+  `--repo` still applies the whole plan to one repository unchanged.
+- Bridge status output carries per-project and per-scope-item `repo`, and
+  status pages link issues through it, so multi-repository portfolios render
+  correctly.
+
 ## [0.13.0] — 2026-07-03
 
 ### Added

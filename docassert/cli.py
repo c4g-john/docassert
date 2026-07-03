@@ -238,7 +238,7 @@ def cmd_pages(args: argparse.Namespace) -> int:
         data = _json.loads(Path(args.execution).read_text())
         for proj in data.get("projects", []):
             execution[proj["id"]] = {**proj, "scope": data.get("scope"),
-                                     "repo": data.get("repo")}
+                                     "repo": proj.get("repo") or data.get("repo")}
 
     plist = projects_mod.load_projects(docs_dir)
     for p in plist:
@@ -306,9 +306,29 @@ def cmd_bridge(args: argparse.Namespace) -> int:
     Scope flows documents -> GitHub only; the bridge never edits documents."""
     from .bridge import build_bridge_plan, ops
     from .bridge import gh as ghmod
+    from .bridge.plan import filter_plan, plans_by_repo
 
     plan = build_bridge_plan(args.documents_dir)
+    if getattr(args, "project", None):
+        plan = filter_plan(plan, args.project)
     gh = ghmod.DryRunner() if getattr(args, "dry_run", False) else ghmod.GhRunner()
+
+    # Repo resolution: an explicit --repo applies the whole plan to one
+    # repository (single-repo portfolios, back-compatible); without it, each
+    # project routes to the repo mapped on its anchor.
+    if args.action != "create-board":
+        if args.repo:
+            repo_plans = {args.repo: plan}
+        else:
+            try:
+                repo_plans = plans_by_repo(plan)
+            except ValueError as exc:
+                print(f"docassert bridge: {exc}", file=sys.stderr)
+                return 2
+            if not repo_plans and plan.skipped:
+                for s in plan.skipped:
+                    print(f"docassert bridge: skipped {s['id']}: {s['reason']}")
+                return 0
 
     if args.action == "create-board":
         from .bridge import board as board_mod
@@ -329,30 +349,46 @@ def cmd_bridge(args: argparse.Namespace) -> int:
                   "(needed for --project-number)", file=sys.stderr)
             return 2
         bgh = gh if isinstance(gh, ghmod.DryRunner) else ghmod.GhRunner(token=token)
-        board_cfg = {"gh": bgh, "owner": args.project_owner or args.repo.split("/")[0],
+        owner = args.project_owner or next(iter(repo_plans)).split("/")[0]
+        board_cfg = {"gh": bgh, "owner": owner,
                      "number": args.project_number, "init": args.init_board}
 
     if args.action == "scaffold":
-        actions = ops.scaffold(plan, gh, args.repo, docs_url=args.docs_url,
-                               board_cfg=board_cfg)
-        for a in actions:
-            print(f"docassert bridge: {a}")
+        for repo, sub in repo_plans.items():
+            actions = ops.scaffold(sub, gh, repo, docs_url=args.docs_url,
+                                   board_cfg=board_cfg)
+            for a in actions:
+                print(f"docassert bridge: [{repo}] {a}")
         if isinstance(gh, ghmod.DryRunner):
             print(f"docassert bridge: dry run — {len(gh.planned)} mutation(s) planned")
             for m in gh.planned:
                 print(f"  {m}")
         return 0
     if args.action == "reconcile":
-        lines, code = ops.reconcile(plan, gh, args.repo)
-        for line in lines:
-            print(f"docassert bridge: {line}")
-        return code
+        worst = 0
+        for repo, sub in repo_plans.items():
+            lines, code = ops.reconcile(sub, gh, repo)
+            for line in lines:
+                print(f"docassert bridge: [{repo}] {line}")
+            worst = max(worst, code)
+        return worst
     if args.action == "status":
-        data = ops.status(plan, gh, args.repo)
-        sys.stdout.write(ops.to_json(data) if args.json else
-                         ops.render_status(data) + "\n")
+        merged: dict = {"repo": None, "projects": [], "scope": {"unverified": [], "orphaned": []}}
+        for repo, sub in repo_plans.items():
+            data = ops.status(sub, gh, repo)
+            for proj in data.get("projects", []):
+                proj["repo"] = repo
+                merged["projects"].append(proj)
+            for key in ("unverified", "orphaned"):
+                for item in data.get("scope", {}).get(key, []):
+                    item["repo"] = repo
+                    merged["scope"][key].append(item)
+        if len(repo_plans) == 1:
+            merged["repo"] = next(iter(repo_plans))
+        sys.stdout.write(ops.to_json(merged) if args.json else
+                         ops.render_status(merged) + "\n")
         if args.json and args.out:
-            Path(args.out).write_text(ops.to_json(data))
+            Path(args.out).write_text(ops.to_json(merged))
         return 0
     print(f"docassert bridge: unknown action {args.action!r}", file=sys.stderr)
     return 2
@@ -441,7 +477,9 @@ def main(argv: list[str] | None = None) -> int:
     b = sub.add_parser("bridge", help="Execution bridge: scaffold and police the GitHub board from approved stories.")
     b.add_argument("action", choices=["scaffold", "reconcile", "status", "create-board"],
                    help="scaffold: docs -> issues/board · reconcile: police the board · status: delivery figures.")
-    b.add_argument("--repo", required=True, help="Target GitHub repo (OWNER/NAME) holding the issues.")
+    b.add_argument("--repo", help="Target GitHub repo (OWNER/NAME) for the whole plan; "
+                   "omit to route each project to the `repo:` on its anchor.")
+    b.add_argument("--project", help="Scope to one project (PRJ-NNN-CODE id or CODE).")
     b.add_argument("--docs-url", help="Base URL of the documents repo, for source links in issue bodies.")
     b.add_argument("--dry-run", action="store_true", help="Print planned mutations without executing them.")
     b.add_argument("--json", action="store_true", help="status: emit JSON.")
