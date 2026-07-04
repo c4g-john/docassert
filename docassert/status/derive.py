@@ -116,6 +116,49 @@ def _broken_references(graph, code=None):
 _MS_RE = re.compile(r"^(?P<label>.+?)[:\u2014\u2013-]\s*(?P<date>\d{4}-\d{2}-\d{2})\.?\s*$")
 
 
+_TSHIRT = [(1, "XS"), (2, "S"), (4, "M"), (7, "L")]
+
+
+def _tshirt(points: int) -> str:
+    for cap, label in _TSHIRT:
+        if points <= cap:
+            return label
+    return "XL"
+
+
+def _features(graph, code):
+    """Every product requirement as a chartable feature: scope points =
+    traced stories + verifying acceptance criteria (document arithmetic, no
+    estimation), plus `after` sequencing resolved into topological layers."""
+    prs = [i for i in graph.by_type.get("PR", []) if not code or i.project == code]
+    feats = {}
+    for pr in prs:
+        stories = graph.children(pr.id, "traces", "US")
+        acs = graph.children(pr.id, "verifies", "AC")
+        feats[pr.id] = {
+            "id": pr.id,
+            "text": pr.text.split(". ")[0][:80],
+            "stories": len(stories),
+            "acs": len(acs),
+            "points": len(stories) + len(acs),
+            "after": [t for t in pr.links.get("after", []) if any(
+                p.id == t for p in prs)],
+            "layer": 0,
+        }
+    # Kahn layering; a cycle (gated by sequence-acyclic) degrades to layer 0
+    for _ in range(len(feats)):
+        changed = False
+        for f in feats.values():
+            want = max((feats[d]["layer"] + 1 for d in f["after"]
+                        if d in feats), default=0)
+            if want > f["layer"]:
+                f["layer"] = want
+                changed = True
+        if not changed:
+            break
+    return sorted(feats.values(), key=lambda f: (f["layer"], -f["points"], f["id"]))
+
+
 def _milestones(docs):
     """Dated charter milestones as temporal facts (never completion claims)."""
     import datetime
@@ -245,6 +288,7 @@ def build_status(documents_dir=DOCUMENTS_DIR, project: str | None = None) -> dic
         "risks": _risks(graph, code),
         "operations": _operations(docs),
         "milestones": _milestones(docs),
+        "features": _features(graph, code),
         "broken_references": _broken_references(graph, code),
         "latest_report": _latest_report(docs),
         "completeness": completeness,

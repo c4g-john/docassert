@@ -301,3 +301,69 @@ def test_charter_target_becomes_implicit_milestone():
     m2 = S.build_status(ROOT / "documents", project="PRJ-001-AUR")
     seen = [x["date"] for x in m2["milestones"]]
     assert len(seen) == len(set(seen))
+
+
+# ── sequence-and-size charts (sponsor direction, spec 0.8.0) ─────────────────
+def _seq_tree(tmp_path, cyclic=False):
+    d = tmp_path / "documents" / "PRJ-001-SQ"
+    d.mkdir(parents=True)
+    (d / "project.md").write_text(
+        "---\nkind: project\nid: PRJ-001-SQ\ncode: SQ\nname: Seq Fixture\n"
+        "sponsor: sp.owner\nstatus: active\n---\n\n## Overview\nx\n\n## Scope\nx\n",
+        encoding="utf-8")
+    first_after = "; after: SQ-PR-003" if cyclic else ""
+    (d / "prd.md").write_text(
+        "---\nkind: prd\nid: SQ-prd\nproject: PRJ-001-SQ\ntitle: T\n"
+        "owner: ow.ner\nstatus: approved\n---\n\n## Overview\nx\n\n"
+        "## Product Requirements\n\n"
+        f"- **SQ-PR-001** (traces: SQ-BR-001{first_after}): First thing.\n"
+        "- **SQ-PR-002** (traces: SQ-BR-001; after: SQ-PR-001): Second thing.\n"
+        "- **SQ-PR-003** (traces: SQ-BR-001; after: SQ-PR-002): Third thing.\n\n"
+        "## Acceptance Criteria\n\n"
+        "- **SQ-AC-001** (verifies: SQ-PR-001): Given a, when b, then c.\n"
+        "- **SQ-AC-002** (verifies: SQ-PR-001): Given d, when e, then f.\n"
+        "- **SQ-AC-003** (verifies: SQ-PR-002): Given g, when h, then i.\n",
+        encoding="utf-8")
+    (d / "brd.md").write_text(
+        "---\nkind: brd\nid: SQ-brd\nproject: PRJ-001-SQ\ntitle: T\n"
+        "owner: ow.ner\nstatus: approved\n---\n\n## Purpose\nx\n\n"
+        "## Business Requirements\n\n"
+        "- **SQ-BR-001**: The business shall reach 100% of the metric by 2026-12-31.\n\n"
+        "## Out of Scope\nx\n", encoding="utf-8")
+    (d / "user-story.md").write_text(
+        "---\nkind: user-story\nid: SQ-user-story\nproject: PRJ-001-SQ\ntitle: T\n"
+        "owner: ow.ner\nstatus: approved\n---\n\n## Overview\nx\n\n"
+        "## User Stories\n\n"
+        "- **SQ-US-001** (traces: SQ-PR-001): As a user, I want one so that value.\n"
+        "- **SQ-US-002** (traces: SQ-PR-003): As a user, I want three so that value.\n",
+        encoding="utf-8")
+    return tmp_path / "documents"
+
+
+def test_features_points_layers_and_tshirt(tmp_path):
+    _cd_root()
+    m = S.build_status(_seq_tree(tmp_path), project="PRJ-001-SQ")
+    by = {f["id"]: f for f in m["features"]}
+    assert by["SQ-PR-001"]["points"] == 3 and by["SQ-PR-001"]["layer"] == 0
+    assert by["SQ-PR-002"]["points"] == 1 and by["SQ-PR-002"]["layer"] == 1
+    assert by["SQ-PR-003"]["points"] == 1 and by["SQ-PR-003"]["layer"] == 2
+    from docassert.status.derive import _tshirt
+    assert [_tshirt(n) for n in (1, 2, 3, 5, 9)] == ["XS", "S", "M", "L", "XL"]
+
+
+def test_sequence_chart_renders_without_time_axis(tmp_path):
+    _cd_root()
+    m = S.build_status(_seq_tree(tmp_path), project="PRJ-001-SQ")
+    out = S.render_html(m)
+    assert "SEQ 1" in out and "scope points" in out
+    assert "XS=1" in out and "scoped" in out
+    assert "created→closed" not in out and "JUL" not in out
+
+
+def test_after_cycle_blocks(tmp_path):
+    from docassert.consistency import check_sequence_acyclic
+    from docassert.graph import build_graph
+    _cd_root()
+    g = build_graph(_seq_tree(tmp_path, cyclic=True))
+    r = check_sequence_acyclic(g)
+    assert not r.passed and r.blocking and "after-cycle" in r.detail

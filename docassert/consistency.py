@@ -49,6 +49,37 @@ def check_unique_item_ids(graph) -> CheckResult:
                        f"Duplicate item IDs: {detail}")
 
 
+def check_sequence_acyclic(graph) -> CheckResult:
+    """The `after` digraph contains no cycle (a cycle is broken sequencing)."""
+    edges: dict[str, list[str]] = {}
+    for item in graph.all_items():
+        for target in item.links.get("after", []):
+            edges.setdefault(item.id, []).append(target)
+    state: dict[str, int] = {}  # 0 visiting, 1 done
+
+    def visit(node, path):
+        if state.get(node) == 1:
+            return None
+        if state.get(node) == 0:
+            return path[path.index(node):] + [node]
+        state[node] = 0
+        for nxt in edges.get(node, []):
+            cycle = visit(nxt, path + [node])
+            if cycle:
+                return cycle
+        state[node] = 1
+        return None
+
+    for start in list(edges):
+        cycle = visit(start, [])
+        if cycle:
+            return CheckResult("sequence-acyclic", False, True,
+                               "after-cycle: " + " → ".join(cycle))
+    n = sum(len(v) for v in edges.values())
+    return CheckResult("sequence-acyclic", True, True,
+                       f"{n} after link(s), no cycles.")
+
+
 def check_referential_integrity(graph) -> CheckResult:
     broken = []
     for item in graph.all_items():
@@ -208,6 +239,7 @@ def run_consistency(documents_dir: str | Path = "documents",
     results = [
         check_unique_item_ids(graph),
         check_referential_integrity(graph),
+        check_sequence_acyclic(graph),
         check_required_links(graph, cfg),
         check_coverage(graph, cfg),
         check_profile_completeness(documents_dir),
