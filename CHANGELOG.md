@@ -3,6 +3,15 @@
 All notable changes to docassert. Format follows [Keep a Changelog](https://keepachangelog.com/);
 versions follow [SemVer](https://semver.org/).
 
+## [0.20.1] — 2026-07-05
+
+### Added
+- Tooltips across the status pages (native `title` attributes; still fully
+  self-contained): derivation rules on every stat, gap lists on coverage
+  meters, full text and scope-point breakdowns on sequence bars, risk
+  descriptions on matrix chips, the temporal-fact rule on milestones, the
+  raw cause list on the verdict, and audit/state explanations on tables.
+
 ## [0.20.0] — 2026-07-05
 
 ### Changed
