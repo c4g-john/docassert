@@ -240,9 +240,29 @@ def cmd_pages(args: argparse.Namespace) -> int:
             execution[proj["id"]] = {**proj, "scope": data.get("scope"),
                                      "repo": proj.get("repo") or data.get("repo")}
 
+    def _activity(project_id: str) -> list[dict]:
+        """Recent documents/ commits for one project (best-effort, git only)."""
+        import subprocess
+        try:
+            out = subprocess.run(
+                ["git", "log", "-n", "6", "--date=short",
+                 "--pretty=%ad\x1f%s", "--", f"{docs_dir}/{project_id}"],
+                capture_output=True, text=True, timeout=10)
+            if out.returncode != 0:
+                return []
+            rows = []
+            for line in out.stdout.strip().splitlines():
+                when, _, text = line.partition("\x1f")
+                if text:
+                    rows.append({"when": when, "text": text})
+            return rows
+        except Exception:
+            return []
+
     plist = projects_mod.load_projects(docs_dir)
     for p in plist:
         model = status_mod.build_status(docs_dir, project=p["id"])
+        model["activity"] = _activity(p["id"])
         if p["id"] in execution:
             model["execution"] = execution[p["id"]]
         (out / f"{p['id']}.html").write_text(status_mod.render_html(model))

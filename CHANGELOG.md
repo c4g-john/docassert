@@ -3,6 +3,26 @@
 All notable changes to docassert. Format follows [Keep a Changelog](https://keepachangelog.com/);
 versions follow [SemVer](https://semver.org/).
 
+## [0.18.0] — 2026-07-04
+
+### Changed
+- Status pages redesigned as decision-grade dashboards (from the sponsor's
+  design handoff): a verdict composed deterministically from the actual
+  status causes, a six-stat cluster, coverage meters with the document-set
+  checklist, a milestone timeline (temporal facts only — a past date renders
+  as elapsed, never as done), execution lanes spanning real issue lifetimes,
+  an interactive risk heat matrix with an expandable register, filterable
+  document/work views, and recent document activity from git history. Pages
+  remain fully self-contained (no external requests); the portfolio index
+  server-renders its rows so it degrades without JavaScript.
+
+### Added
+- Dated charter milestones parsed per spec 0.6.0 (`- <label>: YYYY-MM-DD`,
+  colon or dash separators) with the advisory `milestones-dated` check; the
+  index gains per-project coverage percentage and next dated marker; bridge
+  status carries per-issue facts (title, state, dates, assignee, labels, url)
+  for presentation only — execution never alters the derived RAG.
+
 ## [0.17.0] — 2026-07-04
 
 ### Added

@@ -154,14 +154,15 @@ def test_risks_tolerate_missing_fields():
     assert r["response"] == "" and r["probability"] == "?"
 
 
-def test_render_html_risk_table():
+def test_render_html_risk_section():
     _cd_root()
     out = S.render_html(S.build_status(ROOT / "documents"))
-    assert "<th>Risk</th>" in out and "<th>Response</th>" in out
-    assert "<th>Threatens</th>" in out and "<th>Owner</th>" in out
-    # severity cells are colored
-    assert 'style="color:var(--bad);font-weight:600;">high</td>' in out \
-        or 'style="color:var(--amber);font-weight:600;">medium</td>' in out
+    assert "HEAT MATRIX" in out and "Risk register" in out
+    # the full risk record ships in the embedded data: description, response,
+    # threatens, probability/impact, and disposition
+    assert '"response"' in out and '"threatens"' in out
+    assert '"prob"' in out and '"disposition"' in out
+    assert "AUR-RISK-001" in out
 
 
 # ── risk disposition (ENG-PR-002) ────────────────────────────────────────────
@@ -210,10 +211,11 @@ def test_disposition_check_blocks_invalid(tmp_path):
     assert not ok and "wontfix" in detail
 
 
-def test_render_html_shows_disposition_column():
+def test_render_html_shows_dispositions():
     _cd_root()
     out = S.render_html(S.build_status(ROOT / "documents"))
-    assert "<th>Status</th>" in out and "open of" in out
+    assert '"disposition": "open"' in out or '"disposition":"open"' in out
+    assert "OPEN RISKS" in out and "dispositioned" in out
 
 
 # ── operations kind (ENG-PR-003) ─────────────────────────────────────────────
