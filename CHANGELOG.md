@@ -3,6 +3,20 @@
 All notable changes to docassert. Format follows [Keep a Changelog](https://keepachangelog.com/);
 versions follow [SemVer](https://semver.org/).
 
+## [0.20.0] — 2026-07-05
+
+### Changed
+- Work charts drop the time axis (spec 0.8.0): features chart by dependency
+  sequence (`after` layers for position) and scope size (width ∝ scope
+  points = traced stories + verifying acceptance criteria — document
+  arithmetic, no estimation; XS/S/M/L/XL over published buckets). The chart
+  derives from documents alone, so un-bridged projects get it too; execution
+  facts color the states (done/open/blocked/scoped).
+
+### Added
+- The `after` sequencing relation (PR→PR) with the always-blocking
+  `sequence-acyclic` consistency check. Conformance ref: v0.8.0.
+
 ## [0.19.0] — 2026-07-05
 
 ### Changed

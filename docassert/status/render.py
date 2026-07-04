@@ -362,77 +362,62 @@ def render_html(model) -> str:
     ex = model.get("execution") or {}
     lanes_html = ""
     feats = ex.get("features", [])
-    dated = [f for f in feats if (f.get("facts") or {}).get("created_at")]
-    if dated:
-        starts = [f["facts"]["created_at"] for f in dated]
-        ends = [(f["facts"].get("closed_at") or today.isoformat()) for f in dated]
-        bounds = [datetime.date.fromisoformat(min(starts)),
-                  max(datetime.date.fromisoformat(max(ends)), today)]
-        for m in ms:
-            try:
-                bounds[1] = max(bounds[1], datetime.date.fromisoformat(m["date"]))
-            except ValueError:
-                pass
-        w0 = bounds[0]
-        span = max((bounds[1] - w0).days + 7, 14)
-        # month gridlines
-        months = []
-        cur = datetime.date(w0.year, w0.month, 1)
-        while cur <= bounds[1]:
-            if cur >= w0:
-                months.append(cur)
-            cur = datetime.date(cur.year + (cur.month == 12), (cur.month % 12) + 1, 1)
-        month_html = "".join(
-            f'<span style="position:absolute;left:{_pct(m.isoformat(), w0, span):.2f}%;top:0;'
-            f'font-size:9px;letter-spacing:.14em;color:{_C["dim"]};padding-left:7px;">'
-            f'{m.strftime("%b").upper()}</span>' for m in months)
-        grid = ", ".join(
-            f'transparent {_pct(m.isoformat(), w0, span):.2f}%, #191d21 {_pct(m.isoformat(), w0, span):.2f}%, '
-            f'#191d21 calc({_pct(m.isoformat(), w0, span):.2f}% + 1px), transparent calc({_pct(m.isoformat(), w0, span):.2f}% + 1px)'
-            for m in months) or "transparent 0%"
+    ex_state = {}
+    for f in feats:
+        facts = f.get("facts") or {}
+        ex_state[f["id"]] = ("blocked" if "blocked" in (facts.get("labels") or [])
+                             else "done" if f.get("closed") else "open")
+    chart = model.get("features") or []
+    if chart:
+        maxp = max(f["points"] for f in chart) or 1
+        maxlayer = max(f["layer"] for f in chart)
+        ncols = maxlayer + 1
+        colw = 100.0 / ncols
         fills = {"done": f'background:rgba(63,185,80,.78);color:{_C["bg"]};',
                  "open": f'background:rgba(255,178,36,.85);color:{_C["bg"]};',
-                 "blocked": f'background:rgba(240,78,78,.82);color:{_C["bg"]};'}
-        lane_rows = []
-        for f in dated:
-            facts = f["facts"]
-            state = ("blocked" if "blocked" in (facts.get("labels") or [])
-                     else "done" if f.get("closed") else "open")
-            left = _pct(facts["created_at"], w0, span)
-            right = _pct(facts.get("closed_at") or today.isoformat(), w0, span)
-            w = max(2.0, right - left)
-            label = esc(facts.get("title") or f["id"])
-            lane_rows.append(
+                 "blocked": f'background:rgba(240,78,78,.82);color:{_C["bg"]};',
+                 "scoped": 'background:rgba(255,255,255,.05);color:#9BA1A8;border:1px dashed #3a4046;'}
+        headers = "".join(
+            f'<span style="position:absolute;left:{i * colw:.2f}%;top:0;font-size:9px;'
+            f'letter-spacing:.14em;color:{_C["dim"]};padding-left:7px;">SEQ {i + 1}</span>'
+            for i in range(ncols))
+        gridlines = ", ".join(
+            f'transparent {i * colw:.2f}%, #191d21 {i * colw:.2f}%, '
+            f'#191d21 calc({i * colw:.2f}% + 1px), transparent calc({i * colw:.2f}% + 1px)'
+            for i in range(1, ncols)) or "transparent 0%"
+        rows_html = []
+        for f in chart:
+            state = ex_state.get(f["id"], "scoped")
+            size = _tshirt_label(f["points"])
+            width = max(6.0, (f["points"] / maxp) * (colw - 3))
+            left = f["layer"] * colw + 1
+            dep = f' · after {", ".join(esc(d) for d in f["after"])}' if f["after"] else ""
+            rows_html.append(
                 f'<div style="display:grid;grid-template-columns:186px 1fr;align-items:center;'
                 f'border-bottom:1px solid #14181b;">'
                 f'<div style="padding-right:14px;"><div style="font-size:12px;color:{_C["soft"]};'
-                f'line-height:1.3;">{label[:52]}</div>'
+                f'line-height:1.3;">{esc(f["text"])[:52]}</div>'
                 f'<div style="font-size:9.5px;color:{_C["dim"]};margin-top:3px;">{esc(f["id"])}'
-                f' · {f["stories_closed"]}/{f["stories_total"]}</div></div>'
-                f'<div style="position:relative;height:40px;background-image:linear-gradient(90deg, {grid});">'
-                f'<div style="position:absolute;top:9px;left:{left:.2f}%;width:{w:.2f}%;height:22px;'
-                f'border-radius:3px;display:flex;align-items:center;padding:0 8px;font-size:9.5px;'
-                f'letter-spacing:.02em;overflow:hidden;white-space:nowrap;{fills[state]}">{state}</div></div></div>')
-        today_line = (f'<div style="position:absolute;left:{_pct(today.isoformat(), w0, span):.2f}%;'
-                      f'top:0;bottom:0;width:1px;background:rgba(255,178,36,.45);"></div>')
-        review_marks = "".join(
-            f'<div style="position:absolute;left:{_pct(o["review_by"], w0, span):.2f}%;top:50%;'
-            f'width:10px;height:10px;background:{_C["amber"]};transform:translate(-50%,-50%) rotate(45deg);'
-            f'border:2px solid {_C["bg"]};"></div>'
-            for o in model.get("operations", []) if len(o.get("review_by", "")) == 10)
+                f' · {f["stories"]} st · {f["acs"]} ac{dep}</div></div>'
+                f'<div style="position:relative;height:40px;background-image:linear-gradient(90deg, {gridlines});">'
+                f'<div style="position:absolute;top:9px;left:{left:.2f}%;width:{width:.2f}%;height:22px;'
+                f'border-radius:3px;display:flex;align-items:center;gap:6px;padding:0 8px;font-size:9.5px;'
+                f'letter-spacing:.02em;overflow:hidden;white-space:nowrap;{fills[state]}">'
+                f'<b>{size}</b> {f["points"]}pt · {state}</div></div></div>')
         lanes_html = (
             f'<div style="margin:0 0 60px;">'
             f'<div style="display:grid;grid-template-columns:186px 1fr;"><span></span>'
-            f'<div style="position:relative;height:20px;">{month_html}</div></div>'
-            f'<div style="position:relative;border-top:1px solid {_C["line"]};">'
-            f'<div style="position:absolute;left:186px;right:0;top:0;bottom:0;pointer-events:none;">'
-            f'{today_line}{review_marks}</div>{"".join(lane_rows)}</div>'
+            f'<div style="position:relative;height:20px;">{headers}</div></div>'
+            f'<div style="position:relative;border-top:1px solid {_C["line"]};">{"".join(rows_html)}</div>'
             f'<div style="display:flex;gap:18px;margin-top:18px;font-size:10.5px;color:{_C["muted"]};flex-wrap:wrap;align-items:center;">'
-            f'<span style="display:flex;align-items:center;gap:7px;"><span style="width:11px;height:11px;background:rgba(255,178,36,.85);border-radius:2px;display:inline-block;"></span>open · real created→now span</span>'
-            f'<span style="display:flex;align-items:center;gap:7px;"><span style="width:11px;height:11px;background:rgba(63,185,80,.78);border-radius:2px;display:inline-block;"></span>done · created→closed</span>'
-            f'<span style="display:flex;align-items:center;gap:7px;"><span style="width:11px;height:11px;background:rgba(240,78,78,.82);border-radius:2px;display:inline-block;"></span>blocked label</span>'
-            f'<span style="margin-left:auto;display:flex;align-items:center;gap:8px;">'
-            f'<span style="width:9px;height:9px;background:{_C["amber"]};transform:rotate(45deg);display:inline-block;"></span>operations review</span></div></div>')
+            f'<span>position = dependency sequence (`after` layers)</span>'
+            f'<span>width = <b>scope points</b> = stories + acceptance criteria (no estimation, no time axis)</span>'
+            f'<span>XS=1 · S=2 · M=3–4 · L=5–7 · XL=8+</span>'
+            f'<span style="margin-left:auto;display:flex;gap:14px;">'
+            f'<span style="display:flex;align-items:center;gap:6px;"><span style="width:11px;height:11px;background:rgba(63,185,80,.78);border-radius:2px;display:inline-block;"></span>done</span>'
+            f'<span style="display:flex;align-items:center;gap:6px;"><span style="width:11px;height:11px;background:rgba(255,178,36,.85);border-radius:2px;display:inline-block;"></span>open</span>'
+            f'<span style="display:flex;align-items:center;gap:6px;"><span style="width:11px;height:11px;background:rgba(240,78,78,.82);border-radius:2px;display:inline-block;"></span>blocked</span>'
+            f'<span style="display:flex;align-items:center;gap:6px;"><span style="width:11px;height:11px;background:rgba(255,255,255,.05);border:1px dashed #3a4046;border-radius:2px;display:inline-block;"></span>scoped</span></span></div></div>')
 
     roadmap_html = ""
     if timeline_html or lanes_html:
@@ -589,6 +574,13 @@ def render_html(model) -> str:
 {_PAGE_JS}
 </script></body></html>
 """
+
+
+def _tshirt_label(points: int) -> str:
+    for cap, label in ((1, "XS"), (2, "S"), (4, "M"), (7, "L")):
+        if points <= cap:
+            return label
+    return "XL"
 
 
 def _section(num, name, aside) -> str:
