@@ -14,7 +14,7 @@ derived from the documents rather than self-reported.
 
 docassert is the reference implementation of **[PMO as Code](https://c4g-john.github.io/pmo-as-code/)** —
 a vendor-neutral standard for running a PMO from version-controlled, declarative
-files. It implements the [PMO as Code specification](https://github.com/c4g-john/pmo-as-code-spec) **v0.3** and passes its [conformance suite](https://github.com/c4g-john/pmo-as-code-spec/tree/main/conformance) in CI.
+files. It implements the [PMO as Code specification](https://github.com/c4g-john/pmo-as-code-spec) **v0.8** and passes its [conformance suite](https://github.com/c4g-john/pmo-as-code-spec/tree/main/conformance) (73 cases) in CI.
 
 ## Install
 
@@ -62,19 +62,20 @@ flagged as TODOs, never invented). The skill's source is
 | `docassert extract <file>` | Extract plain text from a source `.docx` / `.pdf` / `.md` / `.txt` (the first step of doc-to-pmo conversion). Needs the `convert` extra: `pip install "docassert[convert]"`. |
 
 Every document-reading command accepts `--documents-dir` (default `documents/`).
-The full flag-by-flag reference, and what 1.x does and does not promise to
-keep stable, live in [STABILITY.md](STABILITY.md).
+The full flag-by-flag reference, and the 1.x stability guarantees (binding
+since 1.0.0), live in [STABILITY.md](STABILITY.md).
 AI alignment grades at most `alignment_limit` links per run (default 25; set it
 in `consistency.yaml`, `0` = no cap) so API cost stays bounded on large graphs.
 
 ## Document kinds
 
-Twenty kinds, each a `templates/<kind>.template.md` + `schema/<kind>.schema.json`
+Twenty-one kinds, each a `templates/<kind>.template.md` + `schema/<kind>.schema.json`
 + `criteria/<kind>.criteria.yaml` trio: `project`, `charter`, `business-case`,
 `brd`, `prd`, `frnfr`, `user-story`, `test-cases`, `adr`, `risk-register`,
 `raci-stakeholder`, `qa-test-plan`, `data-migration-plan`,
 `release-cutover-plan`, `rollback-plan`, `hypercare-plan`, `runbook`,
-`status-report`, `post-implementation-review`, `benefits-realization`. Adding a
+`operations`, `status-report`, `post-implementation-review`,
+`benefits-realization`. Adding a
 kind is adding a trio — no code for the common cases.
 
 ## Two tiers of checks
