@@ -3,6 +3,17 @@
 All notable changes to docassert. Format follows [Keep a Changelog](https://keepachangelog.com/);
 versions follow [SemVer](https://semver.org/).
 
+## [0.17.0] — 2026-07-04
+
+### Added
+- `STABILITY.md`: the 1.x stability and deprecation policy — what the CLI
+  surface, machine-readable outputs, exit codes, and packaged data guarantee,
+  and how deprecations are announced — with a CLI reference generated from
+  the live argument parser.
+
+### Changed
+- Coverage floor raised from 80% to 85% (current: 85.3%).
+
 ## [0.16.0] — 2026-07-04
 
 ### Added

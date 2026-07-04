@@ -85,4 +85,4 @@ source = ["docassert"]
 
 [tool.coverage.report]
 # Keep the gate honest: fail CI if coverage drops below the floor.
-fail_under = 80
+fail_under = 85
