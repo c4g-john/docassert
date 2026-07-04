@@ -62,6 +62,8 @@ flagged as TODOs, never invented). The skill's source is
 | `docassert extract <file>` | Extract plain text from a source `.docx` / `.pdf` / `.md` / `.txt` (the first step of doc-to-pmo conversion). Needs the `convert` extra: `pip install "docassert[convert]"`. |
 
 Every document-reading command accepts `--documents-dir` (default `documents/`).
+The full flag-by-flag reference, and what 1.x does and does not promise to
+keep stable, live in [STABILITY.md](STABILITY.md).
 AI alignment grades at most `alignment_limit` links per run (default 25; set it
 in `consistency.yaml`, `0` = no cap) so API cost stays bounded on large graphs.
 
