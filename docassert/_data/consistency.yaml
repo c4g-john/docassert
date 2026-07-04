@@ -39,6 +39,12 @@ coverage:
 # (0 = no cap).
 alignment_limit: 25
 
+# Open risks move derived status to amber only at or above this
+# probability x impact score (low=1 medium=2 high/critical=3). 0 = any open
+# risk ambers (the strict pre-0.19 behavior). Exposure below the threshold
+# stays fully reported; it just doesn't flatten the headline.
+risk_amber_score: 6
+
 # Rules match in order; the first matching rule grades a link. Typed rules
 # (child_type/parent_type) come before the generic ones.
 alignment:

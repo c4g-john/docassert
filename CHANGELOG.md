@@ -3,6 +3,19 @@
 All notable changes to docassert. Format follows [Keep a Changelog](https://keepachangelog.com/);
 versions follow [SemVer](https://semver.org/).
 
+## [0.19.0] — 2026-07-05
+
+### Changed
+- Risk appetite (spec 0.7.0): open risks amber the derived status only at or
+  above `risk_amber_score` (probability × impact, default 6; `0` restores the
+  strict behavior). The old any-open-risk rule punished risk documentation
+  and rewarded empty registers. Below-threshold exposure stays fully
+  reported on every surface.
+
+### Added
+- An approved charter's `dates.target` renders as an implicit "Charter
+  target" milestone, so every chartered project has a timeline anchor.
+
 ## [0.18.0] — 2026-07-04
 
 ### Changed
