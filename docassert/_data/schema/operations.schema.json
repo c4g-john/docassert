@@ -1,0 +1,50 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Operations frontmatter",
+  "type": "object",
+  "required": [
+    "kind",
+    "id",
+    "project",
+    "title",
+    "owner",
+    "status",
+    "review_by"
+  ],
+  "additionalProperties": true,
+  "properties": {
+    "kind": {
+      "const": "operations"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Z]{2,6}-[a-z0-9][a-z0-9-]*$",
+      "description": "Stable id, <CODE>-<slug>. Unique across documents/."
+    },
+    "title": {
+      "type": "string",
+      "minLength": 3
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 2
+    },
+    "status": {
+      "enum": [
+        "draft",
+        "proposed",
+        "approved",
+        "baselined"
+      ]
+    },
+    "project": {
+      "type": "string",
+      "pattern": "^PRJ-\\d{3,}-[A-Z]{2,6}$"
+    },
+    "review_by": {
+      "type": "string",
+      "format": "date",
+      "description": "The next operations review; a past date is an amber input to derived status."
+    }
+  }
+}

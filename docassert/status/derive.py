@@ -113,6 +113,25 @@ def _broken_references(graph, code=None):
     return broken
 
 
+def _operations(docs):
+    """Operations documents with their review state."""
+    import datetime
+    out = []
+    for d in docs:
+        if d.kind != "operations":
+            continue
+        raw = d.frontmatter.get("review_by")
+        try:
+            due = (raw if isinstance(raw, datetime.date)
+                   else datetime.date.fromisoformat(str(raw)))
+            fresh = due >= datetime.date.today()
+            due_s = due.isoformat()
+        except (TypeError, ValueError):
+            fresh, due_s = False, str(raw)
+        out.append({"id": d.id, "review_by": due_s, "fresh": fresh})
+    return out
+
+
 def _latest_report(docs):
     reports = [d for d in docs if d.kind == "status-report"]
     if not reports:
@@ -179,6 +198,7 @@ def build_status(documents_dir=DOCUMENTS_DIR, project: str | None = None) -> dic
         },
         "coverage": _coverage(graph, cfg, code),
         "risks": _risks(graph, code),
+        "operations": _operations(docs),
         "broken_references": _broken_references(graph, code),
         "latest_report": _latest_report(docs),
         "completeness": completeness,
@@ -245,7 +265,9 @@ def derive_rag(model) -> str:
     completeness_gap = bool(comp and (comp["missing_required"] or comp["incomplete_required"]
                                       or comp["recommended_gaps"] or comp.get("unknown")))
     open_risks = [r for r in model["risks"] if r.get("disposition", "open") == "open"]
-    if coverage_gap or open_risks or reported in {"amber", "red"} or completeness_gap:
+    stale_ops = [o for o in model.get("operations", []) if not o["fresh"]]
+    if (coverage_gap or open_risks or stale_ops
+            or reported in {"amber", "red"} or completeness_gap):
         return "amber"
     return "green"
 

@@ -60,8 +60,9 @@ def test_load_profile_and_unknown():
     assert P.load_profile("does-not-exist", PROFILES) is None
 
 
-def test_available_lists_the_three_profiles():
-    assert set(P.available(PROFILES)) == {"regulated-industry", "lean-startup", "agile-delivery"}
+def test_available_lists_the_shipped_profiles():
+    assert set(P.available(PROFILES)) == {"regulated-industry", "lean-startup",
+                                          "agile-delivery", "operations"}
 
 
 # ── integration with the real repo ──────────────────────────────────────────

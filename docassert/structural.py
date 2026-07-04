@@ -270,6 +270,35 @@ def check_risk_disposition_valid(doc: Document, ctx: dict) -> tuple[bool, str]:
     return True, f"All {total} risk disposition(s) valid (absent means open)."
 
 
+def check_svc_items_complete(doc: Document, ctx: dict) -> tuple[bool, str]:
+    """Every SVC item states a Level and a Measure."""
+    incomplete, total = [], 0
+    for iid, text in _items_of_prefix(doc, ctx, "SVC"):
+        total += 1
+        missing = [f for f in ("Level", "Measure") if _field_value(text, f) is None]
+        if missing:
+            incomplete.append(f'{iid} missing {", ".join(missing)}')
+    if incomplete:
+        return False, "; ".join(incomplete)
+    return True, f"All {total} service(s) state a level and a measure."
+
+
+def check_ops_review_fresh(doc: Document, ctx: dict) -> tuple[bool, str]:
+    """review_by is today or later (advisory; staleness ambers derived status)."""
+    import datetime
+    raw = doc.frontmatter.get("review_by")
+    if raw is None:
+        return False, "No review_by date."
+    try:
+        due = raw if isinstance(raw, datetime.date) else datetime.date.fromisoformat(str(raw))
+    except ValueError:
+        return False, f"review_by is not a date: {raw!r}"
+    today = datetime.date.today()
+    if due < today:
+        return False, f"operations review overdue since {due.isoformat()}"
+    return True, f"Next operations review {due.isoformat()}."
+
+
 def check_adr_items_have_status(doc: Document, ctx: dict) -> tuple[bool, str]:
     """Every ADR item declares a valid Status."""
     bad, total = [], 0
@@ -418,6 +447,8 @@ CHECKS: dict[str, Callable[[Document, dict], tuple[bool, str]]] = {
     "items-well-formed": check_items_well_formed,
     "risk-items-complete": check_risk_items_complete,
     "risk-disposition-valid": check_risk_disposition_valid,
+    "svc-items-complete": check_svc_items_complete,
+    "ops-review-fresh": check_ops_review_fresh,
     "adr-items-have-status": check_adr_items_have_status,
     "raci-one-accountable": check_raci_one_accountable,
     "story-format": check_story_format,
