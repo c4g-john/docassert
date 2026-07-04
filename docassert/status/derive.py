@@ -82,6 +82,9 @@ def _risks(graph, code=None):
         description = (item.text[:m.start()] if m else item.text).strip()
         rm = re.search(r"Response\s*:\s*(.+)$", item.text,
                        re.IGNORECASE | re.DOTALL)
+        raw = (_field_value(item.text, "status") or "open").lower()
+        disposition = raw if raw in {"open", "mitigated", "accepted",
+                                     "closed"} else "open"
         risks.append({
             "id": item.id,
             "description": description,
@@ -90,9 +93,12 @@ def _risks(graph, code=None):
             "impact": impact or "?",
             "owner": _field_value(item.text, "owner") or "?",
             "response": rm.group(1).strip() if rm else "",
+            "disposition": disposition,
             "score": _SEVERITY.get(prob, 0) * _SEVERITY.get(impact, 0),
         })
-    return sorted(risks, key=lambda r: -r["score"])
+    # open risks first, then by severity; dispositioned risks stay as record
+    return sorted(risks, key=lambda r: (r["disposition"] != "open",
+                                        -r["score"]))
 
 
 def _broken_references(graph, code=None):
@@ -218,7 +224,7 @@ def build_index(documents_dir=DOCUMENTS_DIR) -> dict:
             "rag": m["rag"],
             "total": m["counts"]["total"],
             "failing": m["counts"]["failing"],
-            "risks": len(m["risks"]),
+            "risks": len([r for r in m["risks"] if r.get("disposition", "open") == "open"]),
             "coverage_gaps": sum(len(c["gaps"]) for c in m["coverage"]),
             "broken": len(m["broken_references"]),
             "completeness": m.get("completeness"),
@@ -238,7 +244,8 @@ def derive_rag(model) -> str:
     reported = (model["latest_report"] or {}).get("rag")
     completeness_gap = bool(comp and (comp["missing_required"] or comp["incomplete_required"]
                                       or comp["recommended_gaps"] or comp.get("unknown")))
-    if coverage_gap or model["risks"] or reported in {"amber", "red"} or completeness_gap:
+    open_risks = [r for r in model["risks"] if r.get("disposition", "open") == "open"]
+    if coverage_gap or open_risks or reported in {"amber", "red"} or completeness_gap:
         return "amber"
     return "green"
 

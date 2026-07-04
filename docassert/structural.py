@@ -226,6 +226,7 @@ def check_project_id_format(doc: Document, ctx: dict) -> tuple[bool, str]:
 
 
 _RISK_FIELDS = ["Probability", "Impact", "Owner", "Response"]
+_DISPOSITIONS = {"open", "mitigated", "accepted", "closed"}
 _ADR_STATES = {"proposed", "accepted", "superseded", "deprecated", "rejected"}
 
 
@@ -253,6 +254,20 @@ def check_risk_items_complete(doc: Document, ctx: dict) -> tuple[bool, str]:
     if incomplete:
         return False, "; ".join(incomplete)
     return True, f"All {total} risk(s) state probability, impact, owner, and response."
+
+
+def check_risk_disposition_valid(doc: Document, ctx: dict) -> tuple[bool, str]:
+    """Where a RISK item yields Status, it names a valid disposition."""
+    bad, total = [], 0
+    for iid, text in _items_of_prefix(doc, ctx, "RISK"):
+        total += 1
+        value = _field_value(text, "Status")
+        if value is not None and value.lower() not in _DISPOSITIONS:
+            bad.append(f"{iid}: {value!r}")
+    if bad:
+        return False, ("invalid disposition (open|mitigated|accepted|closed): "
+                       + "; ".join(bad))
+    return True, f"All {total} risk disposition(s) valid (absent means open)."
 
 
 def check_adr_items_have_status(doc: Document, ctx: dict) -> tuple[bool, str]:
@@ -402,6 +417,7 @@ CHECKS: dict[str, Callable[[Document, dict], tuple[bool, str]]] = {
     "unique-id": check_unique_id,
     "items-well-formed": check_items_well_formed,
     "risk-items-complete": check_risk_items_complete,
+    "risk-disposition-valid": check_risk_disposition_valid,
     "adr-items-have-status": check_adr_items_have_status,
     "raci-one-accountable": check_raci_one_accountable,
     "story-format": check_story_format,

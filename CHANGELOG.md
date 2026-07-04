@@ -3,6 +3,17 @@
 All notable changes to docassert. Format follows [Keep a Changelog](https://keepachangelog.com/);
 versions follow [SemVer](https://semver.org/).
 
+## [0.15.0] — 2026-07-04
+
+### Added
+- Risk disposition (spec 0.4.0): `RISK` items may carry
+  `Status: open | mitigated | accepted | closed` (absent means open). Only
+  open risks drive the derived RAG and the open-risk signals, so a governed
+  register earns green through recorded dispositions instead of deletion.
+  Invalid dispositions fail the new always-blocking `risk-disposition-valid`
+  check. The status-page risk table shows each risk's disposition, and the
+  portfolio index counts open risks only. Conformance suite ref: v0.4.0.
+
 ## [0.14.1] — 2026-07-04
 
 ### Fixed

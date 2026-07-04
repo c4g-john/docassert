@@ -162,3 +162,55 @@ def test_render_html_risk_table():
     # severity cells are colored
     assert 'style="color:var(--bad);font-weight:600;">high</td>' in out \
         or 'style="color:var(--amber);font-weight:600;">medium</td>' in out
+
+
+# ── risk disposition (ENG-PR-002) ────────────────────────────────────────────
+def _risk_graph(*status_clauses):
+    from docassert.graph import Graph
+    from docassert.models import Item
+    g = Graph()
+    for i, clause in enumerate(status_clauses, 1):
+        text = (f"Risk {i} description. Probability: low. Impact: high. "
+                f"Owner: o.{i}.{clause} Response: watch.")
+        g.add(Item(f"XX-RISK-{i:03d}", "XX", "RISK", text, {}, "d.md",
+                   "risk-register", "approved", "S"))
+    return g
+
+
+def test_disposition_parsed_and_defaulted():
+    from docassert.status.derive import _risks
+    g = _risk_graph(" Status: Mitigated.", " Status: accepted.", "")
+    rs = _risks(g)
+    assert [r["disposition"] for r in rs] == ["open", "mitigated", "accepted"]
+    assert rs[0]["id"] == "XX-RISK-003"          # open risks sort first
+
+
+def test_rag_green_when_all_risks_dispositioned():
+    base = {"documents": [], "coverage": [], "broken_references": [],
+            "latest_report": None, "completeness": None}
+    open_r = dict(base, risks=[{"id": "R", "score": 2, "disposition": "open"}])
+    done_r = dict(base, risks=[{"id": "R", "score": 2, "disposition": "accepted"}])
+    assert S.derive_rag(open_r) == "amber"
+    assert S.derive_rag(done_r) == "green"
+
+
+def test_disposition_check_blocks_invalid(tmp_path):
+    from docassert.loader import load
+    from docassert.structural import check_risk_disposition_valid
+    p = tmp_path / "r.md"
+    p.write_text(
+        "---\nkind: risk-register\nid: XX-risk-register\n"
+        "project: PRJ-001-XX\ntitle: T\nowner: o\nstatus: approved\n---\n\n"
+        "## Overview\nx\n\n## Risks\n\n"
+        "- **XX-RISK-001**: Bad. Probability: low. Impact: low. Owner: o. "
+        "Status: wontfix. Response: r.\n", encoding="utf-8")
+    doc = load(p)
+    ok, detail = check_risk_disposition_valid(
+        doc, {"item_sections": [{"section": "Risks", "prefix": "RISK"}]})
+    assert not ok and "wontfix" in detail
+
+
+def test_render_html_shows_disposition_column():
+    _cd_root()
+    out = S.render_html(S.build_status(ROOT / "documents"))
+    assert "<th>Status</th>" in out and "open of" in out
