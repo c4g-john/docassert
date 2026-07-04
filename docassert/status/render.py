@@ -54,6 +54,10 @@ def render_markdown(model, summary: bool = False) -> str:
     if failing:
         out.append(f"- 🔴 **Documents failing audit**: {', '.join(failing)}")
 
+    for o in model.get("operations", []):
+        mark = "🟢" if o["fresh"] else "🟠"
+        verb = "next" if o["fresh"] else "OVERDUE since"
+        out.append(f"- {mark} **Operations review** (`{o['id']}`): {verb} {o['review_by']}")
     if model["risks"]:
         open_r = [r for r in model["risks"] if r.get("disposition", "open") == "open"]
         rest = len(model["risks"]) - len(open_r)
@@ -176,6 +180,14 @@ def render_html(model) -> str:
     else:
         risks = "<p>None open.</p>"
 
+    ops_html = "".join(
+        f'<div class="sig"><div class="sig-h"><span>Operations review · '
+        f'<code>{esc(o["id"])}</code></span><span style="color:'
+        + ("var(--ok)" if o["fresh"] else "var(--amber)") + ';font-weight:600;">'
+        + ("next " if o["fresh"] else "overdue since ") + f'{esc(o["review_by"])}'
+        '</span></div></div>'
+        for o in model.get("operations", []))
+
     problems = ""
     if model["broken_references"]:
         problems += ("<section><h2>Broken references</h2><ul>"
@@ -287,7 +299,7 @@ def render_html(model) -> str:
   </header>
   <p class="meta">Derived from {c['total']} documents · {c['kinds']} kinds ·
     {c['approved']} approved{scope} · generated {gen}. Do not edit — regenerated from the documents.</p>
-  <section><h2>Traceability coverage</h2>{coverage}</section>
+  <section><h2>Traceability coverage</h2>{coverage}{ops_html}</section>
   {document_set}
   {execution_html}
   {problems}

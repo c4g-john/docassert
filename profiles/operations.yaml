@@ -1,0 +1,18 @@
+# Profile: operations
+#
+# For a repository (or project) whose work is a standing service catalog
+# rather than a delivery arc. The catalog itself is the one required kind;
+# the register and runbook are strongly recommended companions.
+name: operations
+description: >
+  A governed service catalog: the operations document is required, with the
+  risk register and runbook recommended alongside it.
+
+enforce_when: active
+
+expects:
+  required:
+    - operations
+  recommended:
+    - risk-register
+    - runbook

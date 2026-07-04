@@ -3,6 +3,15 @@
 All notable changes to docassert. Format follows [Keep a Changelog](https://keepachangelog.com/);
 versions follow [SemVer](https://semver.org/).
 
+## [0.16.0] — 2026-07-04
+
+### Added
+- The `operations` document kind (spec 0.5.0): a governed service catalog
+  with `Level`/`Measure` fields on `SVC` items, a required `review_by` date,
+  the `svc-items-complete` (once-proposed) and `ops-review-fresh` (advisory)
+  checks, an `operations` profile, and review staleness as an amber input to
+  derived status — BAU without invented end dates. Conformance ref: v0.5.0.
+
 ## [0.15.0] — 2026-07-04
 
 ### Added

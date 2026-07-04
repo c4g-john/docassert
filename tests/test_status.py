@@ -214,3 +214,62 @@ def test_render_html_shows_disposition_column():
     _cd_root()
     out = S.render_html(S.build_status(ROOT / "documents"))
     assert "<th>Status</th>" in out and "open of" in out
+
+
+# ── operations kind (ENG-PR-003) ─────────────────────────────────────────────
+OPS_DOC = """---
+kind: operations
+id: XX-operations
+project: PRJ-001-XX
+title: Ops fixture
+owner: ops.owner
+status: approved
+review_by: {due}
+---
+
+## Overview
+x
+
+## Services
+
+- **XX-SVC-001**: Triage. Level: within 14 days. Measure: monthly report.
+"""
+
+
+def _ops_tree(tmp_path, due):
+    d = tmp_path / "documents" / "PRJ-001-XX"
+    d.mkdir(parents=True)
+    (d / "project.md").write_text(
+        "---\nkind: project\nid: PRJ-001-XX\ncode: XX\nname: Xy Ops\n"
+        "sponsor: sp.owner\nstatus: active\n---\n\n## Overview\nx\n\n## Scope\nx\n",
+        encoding="utf-8")
+    (d / "operations.md").write_text(OPS_DOC.format(due=due), encoding="utf-8")
+    return tmp_path / "documents"
+
+
+def test_stale_operations_review_ambers_status(tmp_path):
+    _cd_root()
+    m = S.build_status(_ops_tree(tmp_path, "2020-01-01"), project="PRJ-001-XX")
+    assert m["operations"][0]["fresh"] is False
+    assert m["rag"] == "amber"
+    assert "OVERDUE" in S.render_markdown(m)
+
+
+def test_fresh_operations_review_stays_green(tmp_path):
+    _cd_root()
+    m = S.build_status(_ops_tree(tmp_path, "2099-12-31"), project="PRJ-001-XX")
+    assert m["operations"][0]["fresh"] is True
+    assert m["rag"] == "green"
+    assert "Operations review" in S.render_html(m)
+
+
+def test_svc_and_freshness_checks(tmp_path):
+    from docassert.loader import load
+    from docassert.structural import check_ops_review_fresh, check_svc_items_complete
+    docs = _ops_tree(tmp_path, "2020-01-01")
+    doc = load(docs / "PRJ-001-XX" / "operations.md")
+    ctx = {"item_sections": [{"section": "Services", "prefix": "SVC"}]}
+    ok, _ = check_svc_items_complete(doc, ctx)
+    assert ok
+    fresh_ok, detail = check_ops_review_fresh(doc, ctx)
+    assert not fresh_ok and "overdue" in detail

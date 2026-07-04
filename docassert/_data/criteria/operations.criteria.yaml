@@ -1,0 +1,40 @@
+# Audit criteria for the Operations kind (spec §13.21).
+kind: operations
+
+required_sections:
+  - Overview
+  - Services
+
+item_sections:
+  - section: Services
+    prefix: SVC
+
+checks:
+  - id: frontmatter-schema
+    type: structural
+    blocking: true
+    description: Frontmatter is valid against schema/operations.schema.json.
+  - id: frontmatter-complete
+    type: structural
+    blocking: once-proposed
+    description: Every schema-required frontmatter field is present (advisory while draft).
+  - id: required-sections
+    type: structural
+    blocking: once-proposed
+    description: Every required section is present and non-empty.
+  - id: items-well-formed
+    type: structural
+    blocking: true
+    description: Every SVC item follows the item grammar in its declared section.
+  - id: svc-items-complete
+    type: structural
+    blocking: once-proposed
+    description: Every SVC item states a Level (the commitment) and a Measure (how attainment is read).
+  - id: ops-review-fresh
+    type: structural
+    blocking: false
+    description: review_by is today or later; a past date is an amber input to derived status, never a merge blocker.
+  - id: unique-id
+    type: structural
+    blocking: true
+    description: The document id is unique across the repository.
