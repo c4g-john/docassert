@@ -31,9 +31,17 @@ jobs:
       - name: Scaffold this repo's project
         env:
           GH_TOKEN: ${{ github.token }}
+          PROJECTS_TOKEN: ${{ secrets.PROJECTS_TOKEN }}
+          PROJECT_NUMBER: ${{ vars.BRIDGE_PROJECT_NUMBER }}
         run: |
+          extra=""
+          if [ -n "$PROJECT_NUMBER" ] && [ -n "$PROJECTS_TOKEN" ]; then
+            extra="--project-owner c4g-john --project-number $PROJECT_NUMBER --init-board"
+          fi
+          # shellcheck disable=SC2086
           docassert bridge scaffold \
             --documents-dir pmo/documents \
             --project PRJ-002-ENG \
             --repo "$GITHUB_REPOSITORY" \
-            --docs-url "https://github.com/c4g-john/pmo-as-code-pmo/blob/main"
+            --docs-url "https://github.com/c4g-john/pmo-as-code-pmo/blob/main" \
+            $extra
