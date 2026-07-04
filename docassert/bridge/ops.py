@@ -45,6 +45,33 @@ def _index(issues: list[dict]) -> dict[str, dict]:
     return out
 
 
+def _converge_duplicates(gh, repo: str, issues: list[dict]) -> tuple[list[dict], list[str]]:
+    """One open issue per bridge marker: racing scaffolds may have created
+    duplicates, so close every open duplicate except the lowest-numbered one
+    and drop the closed ones from the working set. First writer wins."""
+    from collections import defaultdict
+    by_marker: dict[str, list[dict]] = defaultdict(list)
+    for issue in issues:
+        m = MARKER_RE.search(issue.get("body") or "")
+        if m and issue.get("state") == "open":
+            by_marker[m.group(1)].append(issue)
+    actions: list[str] = []
+    losers: set[int] = set()
+    for marker, dupes in by_marker.items():
+        if len(dupes) < 2:
+            continue
+        dupes.sort(key=lambda i: i["number"])
+        for extra in dupes[1:]:
+            G.update_issue(gh, repo, extra["number"], state="closed")
+            G.comment(gh, repo, extra["number"],
+                      f"Duplicate of #{dupes[0]['number']} (bridge marker "
+                      f"{marker}); racing scaffold runs converge on the "
+                      "lowest-numbered issue.")
+            losers.add(extra["number"])
+            actions.append(f"converged duplicate #{extra['number']} -> #{dupes[0]['number']}")
+    return [i for i in issues if i["number"] not in losers], actions
+
+
 def scaffold(plan: BridgePlan, gh: G.GhRunner, repo: str,
              docs_url: str | None = None,
              board_cfg: dict | None = None) -> list[str]:
@@ -59,6 +86,8 @@ def scaffold(plan: BridgePlan, gh: G.GhRunner, repo: str,
         G.ensure_label(gh, repo, name, color, desc)
 
     issues = G.list_issues(gh, repo)
+    issues, converge_actions = _converge_duplicates(gh, repo, issues)
+    actions.extend(converge_actions)
     by_key = _index(issues)
 
     def ensure(key: str, title: str, body: str, label: str) -> dict:

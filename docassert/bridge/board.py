@@ -7,7 +7,7 @@ writes converge on the same values.
 """
 from __future__ import annotations
 
-from .gh import GhRunner
+from .gh import GhError, GhRunner
 
 FIELD_SPECS: dict[str, dict] = {
     "Type": {"dataType": "SINGLE_SELECT", "options": ["Feature", "Story"]},
@@ -67,22 +67,28 @@ def ensure_fields(gh: GhRunner, owner: str, number: int) -> dict:
     for name, spec in FIELD_SPECS.items():
         if name in project["fields"]:
             continue
-        if spec["dataType"] == "SINGLE_SELECT":
-            opts = ", ".join(
-                f'{{name: "{o}", color: GRAY, description: ""}}'
-                for o in spec["options"])
-            gh.graphql(
-                "mutation($p: ID!, $n: String!) { createProjectV2Field(input: {"
-                "projectId: $p, dataType: SINGLE_SELECT, name: $n, "
-                f"singleSelectOptions: [{opts}]"
-                "}) { projectV2Field { ... on ProjectV2FieldCommon { id } } } }",
-                p=project["id"], n=name)
-        else:
-            gh.graphql(
-                "mutation($p: ID!, $n: String!) { createProjectV2Field(input: {"
-                "projectId: $p, dataType: TEXT, name: $n"
-                "}) { projectV2Field { ... on ProjectV2FieldCommon { id } } } }",
-                p=project["id"], n=name)
+        try:
+            if spec["dataType"] == "SINGLE_SELECT":
+                opts = ", ".join(
+                    f'{{name: "{o}", color: GRAY, description: ""}}'
+                    for o in spec["options"])
+                gh.graphql(
+                    "mutation($p: ID!, $n: String!) { createProjectV2Field(input: {"
+                    "projectId: $p, dataType: SINGLE_SELECT, name: $n, "
+                    f"singleSelectOptions: [{opts}]"
+                    "}) { projectV2Field { ... on ProjectV2FieldCommon { id } } } }",
+                    p=project["id"], n=name)
+            else:
+                gh.graphql(
+                    "mutation($p: ID!, $n: String!) { createProjectV2Field(input: {"
+                    "projectId: $p, dataType: TEXT, name: $n"
+                    "}) { projectV2Field { ... on ProjectV2FieldCommon { id } } } }",
+                    p=project["id"], n=name)
+        except GhError as exc:
+            # A concurrent sync created it between our read and our write;
+            # an existing field is the outcome we wanted.
+            if "already been taken" not in str(exc).lower():
+                raise
     return get_project(gh, owner, number)
 
 
