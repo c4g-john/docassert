@@ -21,6 +21,11 @@ required_sections:
   - Approval
 
 checks:
+  - id: milestones-dated
+    type: structural
+    blocking: false
+    description: "At least one Milestones bullet ends with an ISO date (- <label>: YYYY-MM-DD) so timelines can draw it. Advisory only."
+
   - id: frontmatter-schema
     type: structural
     blocking: true

@@ -84,236 +84,761 @@ def render_markdown(model, summary: bool = False) -> str:
 def render_json(model) -> str:
     return json.dumps(model, indent=2) + "\n"
 
+# ── the decision-grade dashboard (ENG-PR-007; design: 2026-07 handoff) ───────
+# Palette and typography follow the sponsor's prototype. Every rendered value
+# traces to the model, bridge facts, or repository history; temporal facts are
+# never presented as completion; execution never feeds back into the RAG.
 
-_HTML_CSS = """
-  :root { --bg:#0d1117; --panel:#161b22; --border:#30363d; --ink:#e6edf3;
-          --muted:#8b949e; --ok:#2ea043; --amber:#d29922; --bad:#f85149; }
-  * { box-sizing:border-box; }
-  body { margin:0; background:var(--bg); color:var(--ink);
-         font:15px/1.5 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; }
-  main { max-width:860px; margin:0 auto; padding:40px 24px 64px; }
-  header { display:flex; align-items:center; gap:16px; flex-wrap:wrap; margin-bottom:8px; }
-  .rag { font-weight:700; font-size:13px; letter-spacing:.08em; color:#0d1117;
-         padding:5px 12px; border-radius:999px; }
-  h1 { font-size:26px; margin:0; }
-  .meta { color:var(--muted); font-size:13px; margin:2px 0 30px; }
-  section { margin-bottom:30px; }
-  h2 { font-size:15px; text-transform:uppercase; letter-spacing:.05em;
-       color:var(--muted); border-bottom:1px solid var(--border); padding-bottom:8px; }
-  .sig { margin:12px 0; }
-  .sig-h { display:flex; justify-content:space-between; font-size:14px; margin-bottom:5px; }
-  .bar { height:8px; background:var(--border); border-radius:4px; overflow:hidden; }
-  .bar-f { height:100%; background:var(--ok); border-radius:4px; }
-  ul { padding-left:18px; } li { margin:4px 0; }
-  code { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:13px;
-         background:#21262d; padding:1px 5px; border-radius:4px; }
-  table { width:100%; border-collapse:collapse; font-size:13.5px; }
-  th,td { text-align:left; padding:7px 10px; border-bottom:1px solid var(--border); }
-  th { color:var(--muted); font-weight:600; }
-  td.ok { color:var(--ok); } td.bad { color:var(--bad); font-weight:700; }
-  footer { color:var(--muted); font-size:12px; margin-top:36px; border-top:1px solid var(--border); padding-top:14px; }
-  .back { display:inline-block; color:var(--muted); text-decoration:none; font-size:13px; margin-bottom:14px; }
-  .back:hover { color:var(--ink); }
+_C = {"bg": "#0B0D0F", "line": "#21262B", "hair": "#16191c", "text": "#E9ECEF",
+      "bright": "#F4F6F8", "soft": "#C7CCD1", "muted": "#7C838B",
+      "faint": "#4E555C", "dim": "#5B626A", "amber": "#FFB224",
+      "amberT": "#FFC24D", "green": "#56D364", "red": "#F87171",
+      "blue": "#6AA6FF", "orange": "#F0883E"}
+
+_RAGC = {"green": _C["green"], "amber": _C["amber"], "red": _C["red"]}
+_RAGT = {"green": _C["green"], "amber": _C["amberT"], "red": _C["red"]}
+
+# Self-contained pages: no external requests. Archivo and IBM Plex Mono are
+# used when installed locally; the stacks below keep the page faithful without
+# them (the self-containment tests enforce zero http(s) references).
+_FONTS = ""
+
+_BASE_CSS = """
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: #0B0D0F; }
+  body { font-family: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace; color: #E9ECEF; -webkit-font-smoothing: antialiased; }
+  ::selection { background: #FFB224; color: #0B0D0F; }
+  ::-webkit-scrollbar { width: 11px; height: 11px; }
+  ::-webkit-scrollbar-track { background: #0B0D0F; }
+  ::-webkit-scrollbar-thumb { background: #262b30; border: 3px solid #0B0D0F; border-radius: 6px; }
+  a { color: inherit; }
+  @keyframes pulseDot { 0%,100% { box-shadow: 0 0 0 0 rgba(255,178,36,.55); } 50% { box-shadow: 0 0 0 7px rgba(255,178,36,0); } }
+  .wrap { max-width: 1200px; margin: 0 auto; padding: 0 24px 120px; }
+  .rail { display:flex; justify-content:space-between; align-items:center; padding:26px 0 30px; font-size:12.5px; letter-spacing:.02em; color:#4E555C; }
+  .rail a { color:#7C838B; text-decoration:none; display:inline-flex; align-items:center; gap:8px; }
+  .livedot { width:6px; height:6px; border-radius:50%; background:#56D364; display:inline-block; }
+  .sect { display:flex; align-items:baseline; gap:16px; margin:60px 0 26px; }
+  .sect .num { font-family:Archivo,system-ui,sans-serif; font-weight:800; font-size:13px; color:#FFB224; }
+  .sect .name { font-family:Archivo,system-ui,sans-serif; font-weight:700; font-size:15px; letter-spacing:.03em; color:#E9ECEF; text-transform:uppercase; }
+  .sect .rule { flex:1; height:1px; background:#21262B; }
+  .sect .aside { font-size:11px; color:#5B626A; }
+  .btn { font-family:'IBM Plex Mono'; font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; padding:5px 12px; border-radius:3px; cursor:pointer; border:1px solid #21262B; background:transparent; color:#7C838B; }
+  .btn.on { border-color:rgba(255,178,36,.4); background:rgba(255,178,36,.1); color:#FFC24D; }
+  .tab { font-family:'IBM Plex Mono'; font-size:11px; letter-spacing:.08em; text-transform:uppercase; padding:8px 2px; background:none; border:none; border-bottom:2px solid transparent; color:#5B626A; cursor:pointer; }
+  .tab.on { border-bottom-color:#FFB224; color:#E9ECEF; }
+  .chiplabel { font-size:10px; letter-spacing:.12em; color:#5B626A; }
+  .mono-tag { font-size:11.5px; color:#7C838B; background:#111417; padding:3px 8px; border-radius:3px; }
+  footer.dc { margin-top:70px; padding-top:22px; border-top:1px solid #21262B; font-size:11px; color:#4E555C; display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px; }
 """
 
-_INDEX_CSS = """
-  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:16px; }
-  a.card { display:block; background:var(--panel); border:1px solid var(--border);
-           border-radius:10px; padding:18px; text-decoration:none; color:var(--ink);
-           transition:border-color .15s, transform .15s; }
-  a.card:hover { border-color:var(--muted); transform:translateY(-2px); }
-  .card-h { display:flex; align-items:center; gap:8px; margin-bottom:10px; }
-  .dot { width:10px; height:10px; border-radius:50%; }
-  .rag-t { font-size:12px; font-weight:700; letter-spacing:.06em; }
-  .code { margin-left:auto; font:12px ui-monospace,SFMono-Regular,Menlo,monospace;
-          background:#21262d; color:var(--muted); padding:2px 7px; border-radius:5px; }
-  .name { font-size:16px; font-weight:600; margin-bottom:3px; }
-  .card .pid { color:var(--muted); font-size:12px;
-               font-family:ui-monospace,SFMono-Regular,Menlo,monospace; margin-bottom:8px; }
-  .sponsor { font-size:13px; color:var(--muted); margin-bottom:10px; }
-  .stats { font-size:12.5px; color:var(--muted); border-top:1px solid var(--border); padding-top:8px; }
-"""
+
+def _now_utc() -> str:
+    import datetime
+    return datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+
+
+def _today():
+    import datetime
+    return datetime.date.today()
+
+
+def _verdict(model) -> str:
+    """One decision-grade sentence composed only from recorded causes."""
+    rag = model["rag"]
+    causes_amber, causes_red, goods = [], [], []
+    gaps = [c for c in model["coverage"] if c["gaps"]]
+    if gaps:
+        causes_amber.append(f"{len(gaps)} coverage chain(s) carry gaps")
+    else:
+        goods.append("coverage is complete")
+    failing = [d for d in model["documents"] if not d["passing"]]
+    if failing:
+        causes_red.append(f"{len(failing)} document(s) fail audit")
+    else:
+        goods.append("every document passes audit")
+    if model["broken_references"]:
+        causes_red.append(f"{len(model['broken_references'])} reference(s) are broken")
+    comp = model.get("completeness")
+    if comp and comp.get("blocks"):
+        causes_red.append("required documents are missing under an enforced profile")
+    open_r = [r for r in model["risks"] if r.get("disposition", "open") == "open"]
+    hi = [r for r in open_r if r.get("impact") in ("high", "critical")]
+    if open_r:
+        clause = f"{len(open_r)} risk(s) stay open"
+        if hi:
+            clause += f", {len(hi)} of them high-impact"
+        causes_amber.append(clause)
+    stale = [o for o in model.get("operations", []) if not o["fresh"]]
+    if stale:
+        causes_amber.append(f"the operations review is overdue since {stale[0]['review_by']}")
+    if rag == "green":
+        return ("Coverage is complete, every document passes audit, and no open risk "
+                "or overdue review stands against this project. Green is earned, not assumed.")
+    if rag == "red":
+        return (" and ".join(causes_red).capitalize()
+                + " — red means something is objectively broken, and the gates say what.")
+    lead = " and ".join(goods[:2]).capitalize() if goods else "The structure holds"
+    tail = "; ".join(causes_amber) if causes_amber else "signals carry residual risk"
+    return f"{lead} — but {tail}. Amber is a recorded state, not neglect."
+
+
+def _days_label(days: int) -> str:
+    if days == 0:
+        return "TODAY"
+    if days < 0:
+        return "ELAPSED"
+    return f"IN {days} DAYS"
+
+
+def _next_marker(model):
+    """Nearest upcoming dated marker: milestone or operations review."""
+    cands = [(m["days"], m["label"], m["date"]) for m in model.get("milestones", [])
+             if m["days"] >= 0]
+    for o in model.get("operations", []):
+        try:
+            import datetime
+            d = (datetime.date.fromisoformat(o["review_by"]) - _today()).days
+            if d >= 0:
+                cands.append((d, "Operations review", o["review_by"]))
+        except ValueError:
+            pass
+    return min(cands) if cands else None
+
+
+def _pct(d, w0, span):
+    import datetime
+    v = (datetime.date.fromisoformat(d) - w0).days / span * 100
+    return max(0.0, min(100.0, v))
+
+
+def _json_embed(data) -> str:
+    return json.dumps(data).replace("</", "<\\\\/")
 
 
 def render_html(model) -> str:
     import datetime
     rag = model["rag"]
     c = model["counts"]
-    color = {"green": "var(--ok)", "amber": "var(--amber)", "red": "var(--bad)"}[rag]
-    bar_color = {"green": "var(--ok)", "amber": "var(--amber)", "red": "var(--bad)"}[rag]
+    rc, rt = _RAGC[rag], _RAGT[rag]
+    title = esc(model.get("title", "Project Status"))
+    pid = model.get("project") or ""
+    gen = _now_utc()
+    today = _today()
 
-    coverage = "".join(
-        f'<div class="sig"><div class="sig-h"><span>{esc(cov["label"])}</span>'
-        f'<span>{cov["covered"]}/{cov["total"]}'
-        + (f' · gaps: {esc(", ".join(cov["gaps"]))}' if cov["gaps"] else "")
-        + '</span></div><div class="bar"><div class="bar-f" style="width:'
-        f'{(100 * cov["covered"] // cov["total"]) if cov["total"] else 100}%'
-        + (";background:var(--amber)" if cov["gaps"] else "") + '"></div></div></div>'
-        for cov in model["coverage"])
+    passing = sum(1 for d in model["documents"] if d["passing"])
+    open_r = [r for r in model["risks"] if r.get("disposition", "open") == "open"]
+    disp_r = len(model["risks"]) - len(open_r)
+    hi = [r for r in open_r if r.get("impact") in ("high", "critical")]
+    cov_n = sum(x["covered"] for x in model["coverage"])
+    cov_d = sum(x["total"] for x in model["coverage"])
+    cov_pct = round(100 * cov_n / cov_d) if cov_d else 100
 
-    def sev(value):
-        color = {"critical": "var(--bad)", "high": "var(--bad)",
-                 "medium": "var(--amber)", "low": "var(--ok)"}.get(
-                     value, "var(--muted)")
-        return f'<td style="color:{color};font-weight:600;">{esc(value)}</td>'
-
-    def disp(value):
-        color = {"open": "var(--amber)", "mitigated": "var(--ok)",
-                 "accepted": "var(--muted)", "closed": "var(--muted)"}.get(
-                     value, "var(--amber)")
-        return f'<td style="color:{color};font-weight:600;">{esc(value)}</td>'
-
-    if model["risks"]:
-        risk_rows = "".join(
-            f'<tr><td><code>{esc(r["id"])}</code></td>'
-            f'<td>{esc(r["description"])}</td>'
-            f'<td>{", ".join(f"<code>{esc(b)}</code>" for b in r["threatens"]) or "—"}</td>'
-            + sev(r["probability"]) + sev(r["impact"])
-            + f'<td>{esc(r["owner"])}</td>'
-            + disp(r.get("disposition", "open"))
-            + f'<td>{esc(r["response"]) or "—"}</td></tr>'
-            for r in model["risks"])
-        risks = ('<table><thead><tr><th>ID</th><th>Risk</th><th>Threatens</th>'
-                 '<th>Probability</th><th>Impact</th><th>Owner</th>'
-                 '<th>Status</th><th>Response</th></tr></thead>'
-                 f'<tbody>{risk_rows}</tbody></table>')
-    else:
-        risks = "<p>None open.</p>"
-
-    ops_html = "".join(
-        f'<div class="sig"><div class="sig-h"><span>Operations review · '
-        f'<code>{esc(o["id"])}</code></span><span style="color:'
-        + ("var(--ok)" if o["fresh"] else "var(--amber)") + ';font-weight:600;">'
-        + ("next " if o["fresh"] else "overdue since ") + f'{esc(o["review_by"])}'
-        '</span></div></div>'
-        for o in model.get("operations", []))
-
-    problems = ""
-    if model["broken_references"]:
-        problems += ("<section><h2>Broken references</h2><ul>"
-                     + "".join(f"<li><code>{esc(b)}</code></li>" for b in model["broken_references"])
-                     + "</ul></section>")
-    failing = [d for d in model["documents"] if not d["passing"]]
-    if failing:
-        problems += ("<section><h2>Documents failing audit</h2><ul>"
-                     + "".join(f'<li><code>{esc(d["id"])}</code></li>' for d in failing)
-                     + "</ul></section>")
-
-    rows = "".join(
-        f'<tr><td>{esc(d["kind"])}</td><td><code>{esc(d["id"])}</code></td>'
-        f'<td>{esc(d["status"])}</td>'
-        f'<td class="{"ok" if d["passing"] else "bad"}">{"✓" if d["passing"] else "✗"}</td></tr>'
-        for d in sorted(model["documents"], key=lambda x: (x["kind"], x["id"])))
-
-    lr = model["latest_report"]
-    report = (f'<code>{esc(lr["id"])}</code> ({esc(lr["period"])}) → reported <b>{esc(lr["rag"])}</b>'
-              if lr else "None on record.")
-    gen = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
-
+    # ── stats ────────────────────────────────────────────────────────────────
+    nxt = _next_marker(model)
     comp = model.get("completeness")
-    document_set = ""
-    if comp and comp.get("unknown"):
-        document_set = (f'<section><h2>Document set</h2><p style="color:var(--bad)">'
-                        f'Profile <code>{esc(comp["profile"])}</code> not found under profiles/.</p></section>')
-    elif comp:
-        _st = {"complete": ("var(--ok)", "complete"),
-               "incomplete": ("var(--amber)", "incomplete"),
-               "missing": ("var(--bad)", "missing")}
+    if comp and not comp.get("unknown"):
+        docset_v = f"{comp['required_complete']}/{comp['required_total']}"
+        rec_open = sum(1 for i in comp["recommended"] if i["state"] != "complete")
+        docset_sub = (f"{rec_open} of {len(comp['recommended'])} recommended open"
+                      if comp["recommended"] else "required set")
+        docset_c = _C["green"] if comp["required_complete"] == comp["required_total"] else _C["amberT"]
+    else:
+        docset_v, docset_sub, docset_c = f"{c['kinds']}", "kinds present · no profile", _C["muted"]
+    stats = [
+        ("HEALTH", rag.upper(), rt,
+         (f"{len(hi)} high-impact risk(s) open" if hi else
+          f"{len(open_r)} open risk(s)" if open_r else "no open risks")),
+        ("DOCS APPROVED", f"{c['approved']}/{c['total']}",
+         _C["green"] if c["approved"] == c["total"] else _C["soft"],
+         f"{passing} of {c['total']} pass audit"),
+        ("COVERAGE", f"{cov_pct}%", _C["green"] if cov_pct == 100 else _C["amberT"],
+         f"{cov_n} of {cov_d} links traced"),
+        ("OPEN RISKS", str(len(open_r)), _C["amberT"] if open_r else _C["green"],
+         f"{disp_r} dispositioned" if disp_r else "0 dispositioned"),
+        ("NEXT MILESTONE", (f"{nxt[0]}d" if nxt else "—"), _C["text"],
+         (f"{esc(nxt[1])} · {nxt[2]}" if nxt else "no dated milestone")),
+        ("DOC SET", docset_v, docset_c, docset_sub),
+    ]
+    stat_html = "".join(
+        f'<div style="padding:22px 20px;border-left:1px solid {_C["line"]};">'
+        f'<div class="chiplabel" style="margin-bottom:14px;">{k}</div>'
+        f'<div style="font-family:Archivo,system-ui,sans-serif;font-weight:800;font-size:30px;letter-spacing:-.02em;'
+        f'line-height:1;color:{col};font-variant-numeric:tabular-nums;">{esc(v)}</div>'
+        f'<div style="font-size:11px;color:{_C["muted"]};margin-top:9px;line-height:1.4;">{sub}</div></div>'
+        for k, v, col, sub in stats)
 
-        def _row(item, required):
-            col, lab = _st[item["state"]]
-            if item["state"] == "missing" and not required:
-                col, lab = "var(--muted)", "not added"
-            return (f'<tr><td><code>{esc(item["kind"])}</code></td>'
-                    f'<td style="color:{col};font-weight:600;">{lab}</td></tr>')
+    # ── 01 coverage meters + doc set ────────────────────────────────────────
+    meters = []
+    for cov in model["coverage"]:
+        total, covered = cov["total"], cov["covered"]
+        cells = min(total, 28) or 1
+        filled = round(cells * covered / total) if total else cells
+        cell_html = "".join(
+            f'<span style="flex:1;height:10px;background:'
+            f'{_C["green"] if i < filled else _C["line"]};"></span>'
+            for i in range(cells))
+        ratio_c = _C["green"] if covered == total else _C["amberT"]
+        meters.append(
+            f'<div><div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:11px;">'
+            f'<span style="font-size:12.5px;color:{_C["soft"]};">{esc(cov["label"])}</span>'
+            f'<span style="font-family:Archivo,system-ui,sans-serif;font-weight:700;font-size:13px;color:{ratio_c};">'
+            f'{covered}/{total}</span></div><div style="display:flex;gap:4px;">{cell_html}</div></div>')
+    fresh_ops = [o for o in model.get("operations", []) if o["fresh"]]
+    review_note = (f'<span style="margin-left:auto;">next review · <span style="color:{_C["green"]};">'
+                   f'{esc(fresh_ops[0]["review_by"])}</span></span>' if fresh_ops else "")
+    legend = (f'<div style="display:flex;gap:12px;align-items:center;font-size:11.5px;color:{_C["muted"]};'
+              f'padding-top:6px;border-top:1px solid {_C["hair"]};">'
+              f'<span style="width:7px;height:7px;background:{_C["green"]};display:inline-block;"></span> traced'
+              f'<span style="width:7px;height:7px;background:{_C["line"]};display:inline-block;margin-left:12px;"></span> gap'
+              + review_note + "</div>")
 
-        req_rows = "".join(_row(i, True) for i in comp["required"])
-        rec_rows = "".join(_row(i, False) for i in comp["recommended"])
-        sep = ('<tr><td colspan="2" style="color:var(--muted);border:0;padding:14px 10px 4px;'
-               'font-size:11px;text-transform:uppercase;letter-spacing:.05em;">Recommended</td></tr>'
-               if rec_rows else "")
-        if comp["blocks"]:
-            note = (f'<p style="color:var(--bad);font-size:13px;margin:0 0 10px;">Missing required: '
-                    f'<code>{esc(", ".join(comp["missing_required"]))}</code> — blocks release '
-                    f'while <code>{esc(comp["enforce_when"])}</code>.</p>')
-        elif comp["missing_required"] or comp["incomplete_required"]:
-            note = (f'<p style="color:var(--amber);font-size:13px;margin:0 0 10px;">Advisory until '
-                    f'the project is <code>{esc(comp["enforce_when"])}</code>.</p>')
-        else:
-            note = ""
-        document_set = (f'<section><h2>Document set · {esc(comp["profile"])} '
-                        f'({comp["required_complete"]}/{comp["required_total"]} required complete)</h2>'
-                        f'{note}<table><thead><tr><th>Kind</th><th>State</th></tr></thead>'
-                        f'<tbody>{req_rows}{sep}{rec_rows}</tbody></table></section>')
+    docset_rows = ""
+    docset_head = ""
+    if comp and not comp.get("unknown"):
+        docset_head = f'DOCUMENT SET · {esc(comp["profile"]).upper()}'
+        def _ds_row(item, tag):
+            ok = item["state"] == "complete"
+            state = {"complete": ("complete", _C["green"]),
+                     "incomplete": ("incomplete", _C["amberT"]),
+                     "missing": (("missing", _C["red"]) if tag == "REQUIRED"
+                                 else ("not added", _C["faint"]))}[item["state"]]
+            mark = "✓" if ok else "·"
+            markc = _C["green"] if ok else _C["faint"]
+            return (f'<div style="display:grid;grid-template-columns:16px 1fr auto;gap:14px;align-items:center;'
+                    f'padding:13px 0;border-bottom:1px solid {_C["hair"]};">'
+                    f'<span style="color:{markc};font-size:13px;text-align:center;">{mark}</span>'
+                    f'<span style="font-size:12.5px;color:{_C["soft"]};">{esc(item["kind"])} '
+                    f'<span style="font-size:10px;color:{_C["faint"]};margin-left:6px;">{tag}</span></span>'
+                    f'<span style="font-size:11.5px;color:{state[1]};justify-self:end;">{state[0]}</span></div>')
+        docset_rows = ("".join(_ds_row(i, "REQUIRED") for i in comp["required"])
+                       + "".join(_ds_row(i, "RECOMMENDED") for i in comp["recommended"]))
+        rec_open = sum(1 for i in comp["recommended"] if i["state"] != "complete")
+        docset_rows += (f'<div style="margin-top:16px;font-size:11.5px;color:{_C["muted"]};">'
+                        f'{comp["required_complete"]} of {comp["required_total"]} required complete'
+                        + (f' · {rec_open} of {len(comp["recommended"])} recommended still open'
+                           if comp["recommended"] else "") + "</div>")
 
-    execution_html = ""
-    ex = model.get("execution")
+    # ── 02 roadmap: milestone dots + gantt from real issue lifetimes ────────
+    ms = list(model.get("milestones", []))
+    for o in model.get("operations", []):
+        ms.append({"label": "Operations review", "date": o["review_by"],
+                   "days": (datetime.date.fromisoformat(o["review_by"]) - today).days
+                   if len(o["review_by"]) == 10 else 0,
+                   "when": "upcoming" if o["fresh"] else "elapsed"})
+    ms.sort(key=lambda m: m["date"])
+    timeline_html = ""
+    if ms:
+        shown = ms[:6]
+        def _dot(m):
+            if m["when"] == "today":
+                return (f'background:{_C["amber"]};box-shadow:0 0 0 1px {_C["amber"]};'
+                        'animation:pulseDot 2s infinite;')
+            if m["when"] == "elapsed":
+                return f'background:{_C["faint"]};box-shadow:0 0 0 1px {_C["faint"]};'
+            return f'background:{_C["bg"]};box-shadow:0 0 0 1px #3a4046;'
+        def _tag(m):
+            if m["when"] == "today":
+                return f'color:{_C["bg"]};background:{_C["amber"]};'
+            if m["when"] == "elapsed":
+                return f'color:{_C["muted"]};background:#14181b;'
+            return f'color:{_C["muted"]};background:#14181b;'
+        cols = "".join(
+            f'<div style="display:flex;flex-direction:column;align-items:flex-start;">'
+            f'<span style="display:block;width:14px;height:14px;border-radius:50%;'
+            f'border:2px solid {_C["bg"]};{_dot(m)}"></span>'
+            f'<div style="font-family:Archivo,system-ui,sans-serif;font-weight:700;font-size:13px;color:{_C["text"]};'
+            f'margin-top:20px;">{esc(m["label"])}</div>'
+            f'<div style="font-size:11px;color:{_C["muted"]};margin-top:5px;">{esc(m["date"])}</div>'
+            f'<span style="display:inline-block;margin-top:10px;font-size:9.5px;letter-spacing:.1em;'
+            f'padding:3px 8px;border-radius:3px;{_tag(m)}">{_days_label(m["days"])}</span></div>'
+            for m in shown)
+        elapsed_pct = round(100 * sum(1 for m in shown if m["when"] != "upcoming") / len(shown))
+        timeline_html = (
+            f'<div style="position:relative;margin:0 8px 44px;">'
+            f'<div style="position:absolute;top:7px;left:0;right:0;height:1px;background:{_C["line"]};"></div>'
+            f'<div style="position:absolute;top:7px;left:0;height:1px;background:{_C["amber"]};width:{elapsed_pct}%;"></div>'
+            f'<div style="display:grid;grid-template-columns:repeat({len(shown)},1fr);position:relative;">{cols}</div></div>')
+
+    ex = model.get("execution") or {}
+    lanes_html = ""
+    feats = ex.get("features", [])
+    dated = [f for f in feats if (f.get("facts") or {}).get("created_at")]
+    if dated:
+        starts = [f["facts"]["created_at"] for f in dated]
+        ends = [(f["facts"].get("closed_at") or today.isoformat()) for f in dated]
+        bounds = [datetime.date.fromisoformat(min(starts)),
+                  max(datetime.date.fromisoformat(max(ends)), today)]
+        for m in ms:
+            try:
+                bounds[1] = max(bounds[1], datetime.date.fromisoformat(m["date"]))
+            except ValueError:
+                pass
+        w0 = bounds[0]
+        span = max((bounds[1] - w0).days + 7, 14)
+        # month gridlines
+        months = []
+        cur = datetime.date(w0.year, w0.month, 1)
+        while cur <= bounds[1]:
+            if cur >= w0:
+                months.append(cur)
+            cur = datetime.date(cur.year + (cur.month == 12), (cur.month % 12) + 1, 1)
+        month_html = "".join(
+            f'<span style="position:absolute;left:{_pct(m.isoformat(), w0, span):.2f}%;top:0;'
+            f'font-size:9px;letter-spacing:.14em;color:{_C["dim"]};padding-left:7px;">'
+            f'{m.strftime("%b").upper()}</span>' for m in months)
+        grid = ", ".join(
+            f'transparent {_pct(m.isoformat(), w0, span):.2f}%, #191d21 {_pct(m.isoformat(), w0, span):.2f}%, '
+            f'#191d21 calc({_pct(m.isoformat(), w0, span):.2f}% + 1px), transparent calc({_pct(m.isoformat(), w0, span):.2f}% + 1px)'
+            for m in months) or "transparent 0%"
+        fills = {"done": f'background:rgba(63,185,80,.78);color:{_C["bg"]};',
+                 "open": f'background:rgba(255,178,36,.85);color:{_C["bg"]};',
+                 "blocked": f'background:rgba(240,78,78,.82);color:{_C["bg"]};'}
+        lane_rows = []
+        for f in dated:
+            facts = f["facts"]
+            state = ("blocked" if "blocked" in (facts.get("labels") or [])
+                     else "done" if f.get("closed") else "open")
+            left = _pct(facts["created_at"], w0, span)
+            right = _pct(facts.get("closed_at") or today.isoformat(), w0, span)
+            w = max(2.0, right - left)
+            label = esc(facts.get("title") or f["id"])
+            lane_rows.append(
+                f'<div style="display:grid;grid-template-columns:186px 1fr;align-items:center;'
+                f'border-bottom:1px solid #14181b;">'
+                f'<div style="padding-right:14px;"><div style="font-size:12px;color:{_C["soft"]};'
+                f'line-height:1.3;">{label[:52]}</div>'
+                f'<div style="font-size:9.5px;color:{_C["dim"]};margin-top:3px;">{esc(f["id"])}'
+                f' · {f["stories_closed"]}/{f["stories_total"]}</div></div>'
+                f'<div style="position:relative;height:40px;background-image:linear-gradient(90deg, {grid});">'
+                f'<div style="position:absolute;top:9px;left:{left:.2f}%;width:{w:.2f}%;height:22px;'
+                f'border-radius:3px;display:flex;align-items:center;padding:0 8px;font-size:9.5px;'
+                f'letter-spacing:.02em;overflow:hidden;white-space:nowrap;{fills[state]}">{state}</div></div></div>')
+        today_line = (f'<div style="position:absolute;left:{_pct(today.isoformat(), w0, span):.2f}%;'
+                      f'top:0;bottom:0;width:1px;background:rgba(255,178,36,.45);"></div>')
+        review_marks = "".join(
+            f'<div style="position:absolute;left:{_pct(o["review_by"], w0, span):.2f}%;top:50%;'
+            f'width:10px;height:10px;background:{_C["amber"]};transform:translate(-50%,-50%) rotate(45deg);'
+            f'border:2px solid {_C["bg"]};"></div>'
+            for o in model.get("operations", []) if len(o.get("review_by", "")) == 10)
+        lanes_html = (
+            f'<div style="margin:0 0 60px;">'
+            f'<div style="display:grid;grid-template-columns:186px 1fr;"><span></span>'
+            f'<div style="position:relative;height:20px;">{month_html}</div></div>'
+            f'<div style="position:relative;border-top:1px solid {_C["line"]};">'
+            f'<div style="position:absolute;left:186px;right:0;top:0;bottom:0;pointer-events:none;">'
+            f'{today_line}{review_marks}</div>{"".join(lane_rows)}</div>'
+            f'<div style="display:flex;gap:18px;margin-top:18px;font-size:10.5px;color:{_C["muted"]};flex-wrap:wrap;align-items:center;">'
+            f'<span style="display:flex;align-items:center;gap:7px;"><span style="width:11px;height:11px;background:rgba(255,178,36,.85);border-radius:2px;display:inline-block;"></span>open · real created→now span</span>'
+            f'<span style="display:flex;align-items:center;gap:7px;"><span style="width:11px;height:11px;background:rgba(63,185,80,.78);border-radius:2px;display:inline-block;"></span>done · created→closed</span>'
+            f'<span style="display:flex;align-items:center;gap:7px;"><span style="width:11px;height:11px;background:rgba(240,78,78,.82);border-radius:2px;display:inline-block;"></span>blocked label</span>'
+            f'<span style="margin-left:auto;display:flex;align-items:center;gap:8px;">'
+            f'<span style="width:9px;height:9px;background:{_C["amber"]};transform:rotate(45deg);display:inline-block;"></span>operations review</span></div></div>')
+
+    roadmap_html = ""
+    if timeline_html or lanes_html:
+        nxt_label = f"Operations review in {nxt[0]} days" if nxt and nxt[1] == "Operations review" else (
+            f"next: {esc(nxt[1])} in {nxt[0]}d" if nxt else "")
+        roadmap_html = (_section("02", "Roadmap", nxt_label) + timeline_html + lanes_html)
+
+    # ── data for the interactive sections ────────────────────────────────────
+    risks_data = [{
+        "id": r["id"], "short": r["id"].split("RISK-")[-1],
+        "desc": r["description"], "threatens": r["threatens"],
+        "prob": r["probability"], "impact": r["impact"],
+        "disposition": r.get("disposition", "open"),
+        "owner": r["owner"], "response": r["response"],
+    } for r in model["risks"]]
+    docs_data = [{"kind": d["kind"], "id": d["id"], "status": d["status"],
+                  "passing": bool(d["passing"])}
+                 for d in sorted(model["documents"], key=lambda x: (x["kind"], x["id"]))]
+    work_data = []
+    for f in feats:
+        ffacts = f.get("facts") or {}
+        work_data.append({"type": "FEATURE", "id": f["id"],
+                          "title": ffacts.get("title") or f["id"],
+                          "state": "blocked" if "blocked" in (ffacts.get("labels") or [])
+                          else ("done" if f.get("closed") else "open"),
+                          "assignee": ffacts.get("assignee") or "—",
+                          "url": ffacts.get("url") or "", "link": f["id"]})
+        for s in f.get("stories", []):
+            sfacts = s.get("facts") or {}
+            work_data.append({"type": "STORY", "id": s["id"],
+                              "title": sfacts.get("title") or s["id"],
+                              "state": "blocked" if "blocked" in (sfacts.get("labels") or [])
+                              else ("done" if sfacts.get("state") == "closed" else "open"),
+                              "assignee": sfacts.get("assignee") or "—",
+                              "url": sfacts.get("url") or "", "link": f["id"]})
+
+    activity = model.get("activity") or []
+    activity_html = ""
+    if activity:
+        items = "".join(
+            f'<div style="position:relative;">'
+            f'<span style="position:absolute;left:-31px;top:5px;width:8px;height:8px;border-radius:50%;'
+            f'background:{_C["green"] if i else _C["amber"]};border:2px solid {_C["bg"]};"></span>'
+            f'<div style="display:flex;gap:14px;align-items:baseline;">'
+            f'<span style="font-size:11px;color:{_C["dim"]};min-width:88px;">{esc(a["when"])}</span>'
+            f'<span style="font-size:12.5px;color:{_C["soft"]};line-height:1.5;">{esc(a["text"])}</span>'
+            f'</div></div>'
+            for i, a in enumerate(activity))
+        activity_html = (_section("06", "Recent activity", "documents/ commit history")
+                         + f'<div style="border-left:1px solid {_C["line"]};padding-left:26px;'
+                         f'display:flex;flex-direction:column;gap:22px;">{items}</div>')
+
+    scope_html = ""
     if ex:
-        feat_rows: list[str] = []
-        for f in ex.get("features", []):
-            total = f.get("stories_total", 0) or 0
-            done = f.get("stories_closed", 0) or 0
-            pct = (100 * done // total) if total else 0
-            mark = "✓" if f.get("closed") else ""
-            issue = f' · <a href="https://github.com/{esc(ex.get("repo", ""))}/issues/{f["issue"]}">#{f["issue"]}</a>' if f.get("issue") else ""
-            feat_rows.append(
-                f'<div class="sig"><div class="sig-h"><span>{esc(f["id"])} {mark}</span>'
-                f'<span>{done}/{total} stories{issue}</span></div>'
-                f'<div class="bar"><div class="bar-f" style="width:{pct}%;background:var(--ok)"></div></div></div>')
-        overall_t = ex.get("stories_total", 0) or 0
-        overall_d = ex.get("stories_closed", 0) or 0
-        execution_html = (
-            f'<section><h2>Delivery · {overall_d}/{overall_t} stories closed</h2>'
-            '<p style="color:var(--muted);font-size:13px;margin:0 0 10px">'
-            "Read from the bridge-managed issues. Scope lives in these documents; "
-            "delivery lives on the board.</p>" + "".join(feat_rows) + "</section>")
         scope = ex.get("scope") or {}
         bad = scope.get("unverified", []) + scope.get("orphaned", [])
         if bad:
-            items = "".join(
-                f'<li><a href="https://github.com/{esc(i.get("repo") or ex.get("repo") or "")}/issues/{i["number"]}">#{i["number"]}</a> {esc(i["title"])}</li>'
-                for i in bad)
-            execution_html += (
-                f'<section><h2 style="color:var(--bad)">Scope · {len(bad)} unmatched item(s)</h2>'
-                f'<ul>{items}</ul></section>')
+            rows_s = "".join(
+                f'<li style="margin:6px 0;"><a style="color:{_C["red"]};" '
+                f'href="https://github.com/{esc(i.get("repo") or ex.get("repo") or "")}/issues/{i["number"]}">'
+                f'#{i["number"]}</a> {esc(i["title"])}</li>' for i in bad)
+            scope_html = (f'<div style="margin:26px 0 0;padding:16px 20px;border-left:3px solid {_C["red"]};'
+                          f'background:rgba(240,78,78,.05);font-size:12.5px;color:{_C["soft"]};">'
+                          f'<b style="color:{_C["red"]};">Scope</b> · {len(bad)} open issue(s) match no approved item:'
+                          f'<ul style="margin:8px 0 0;padding-left:18px;">{rows_s}</ul></div>')
         else:
-            execution_html += ('<section><h2>Scope</h2><p style="color:var(--ok)">'
-                               "Every open issue matches an approved item in the documents.</p></section>")
+            scope_html = (f'<div style="margin:26px 0 0;font-size:11.5px;color:{_C["green"]};">'
+                          f'scope · every open issue matches an approved item in the documents</div>')
 
-    title = esc(model.get("title", "Project Status"))
-    pid = model.get("project")
-    back = '<a class="back" href="index.html">← all projects</a>' if pid else ""
-    scope = f" · <code>{esc(pid)}</code>" if pid else ""
+    work_aside = (f"{ex.get('stories_closed', 0)}/{ex.get('stories_total', 0)} stories closed"
+                  if ex else "bridge-managed issues")
+    verdict = _verdict(model)
+    payload = _json_embed({"risks": risks_data, "docs": docs_data, "work": work_data,
+                           "C": _C})
+
+    hi_note = f"{len(open_r)} open · {len(hi)} high-impact" if open_r else f"{disp_r} dispositioned · none open"
+    lr = model["latest_report"]
+    report_note = (f' · latest report {esc(lr["id"])} said {esc(lr["rag"])}' if lr else "")
+    back = '<a href="index.html"><span style="font-family:Archivo,system-ui,sans-serif;font-weight:700;">&larr;</span> all projects</a>' if pid else "<span></span>"
 
     return f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{title} — {rag.upper()}</title>
-<style>{_HTML_CSS}
-  .bar-f {{ background:{bar_color}; }}</style></head>
-<body><main>
-  {back}
-  <header>
-    <span class="rag" style="background:{color}">{rag.upper()}</span>
-    <h1>{title}</h1>
-  </header>
-  <p class="meta">Derived from {c['total']} documents · {c['kinds']} kinds ·
-    {c['approved']} approved{scope} · generated {gen}. Do not edit — regenerated from the documents.</p>
-  <section><h2>Traceability coverage</h2>{coverage}{ops_html}</section>
-  {document_set}
-  {execution_html}
-  {problems}
-  <section><h2>Risks ({len([r for r in model['risks'] if r.get('disposition', 'open') == 'open'])} open of {len(model['risks'])})</h2>{risks}</section>
-  <section><h2>Latest status report</h2><p>{report}</p></section>
-  <section><h2>Documents ({c['total']})</h2>
-    <table><thead><tr><th>Kind</th><th>ID</th><th>Status</th><th>Audit</th></tr></thead>
-    <tbody>{rows}</tbody></table></section>
-  <footer>Generated by <code>docassert status</code> from the documents in this repository.</footer>
-</main></body></html>
+<title>{title} — {rag.upper()}</title>{_FONTS}
+<style>{_BASE_CSS}</style></head>
+<body><div class="wrap">
+  <div class="rail">{back}
+    <div style="display:flex;align-items:center;gap:10px;"><span class="livedot"></span>
+    docassert&nbsp;status · live from repo</div></div>
+
+  <div style="border-top:2px solid {rc};padding-top:26px;">
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px;">
+      <span style="font-weight:600;font-size:11px;letter-spacing:.18em;color:{_C['bg']};background:{rc};padding:5px 11px;border-radius:3px;">{rag.upper()}</span>
+      <span style="font-size:11px;letter-spacing:.16em;color:{_C['faint']};">{esc(pid)}</span>
+    </div>
+    <h1 style="font-family:Archivo,system-ui,sans-serif;font-weight:800;font-size:46px;line-height:1.02;letter-spacing:-.02em;margin:0 0 14px;color:{_C['bright']};max-width:20ch;">{title}</h1>
+    <div style="font-size:12.5px;color:{_C['muted']};line-height:1.7;max-width:62ch;">
+      Derived from <span style="color:{_C['soft']};">{c['total']} documents</span> across
+      <span style="color:{_C['soft']};">{c['kinds']} kinds</span>,
+      <span style="color:{_C['soft']};">{c['approved']} approved</span>.
+      Regenerated {gen} — not hand-edited{report_note}.
+    </div>
+  </div>
+
+  <div style="display:flex;gap:18px;margin:28px 0 44px;padding:20px 22px;background:rgba(255,178,36,.06);border-left:3px solid {rc};">
+    <span style="font-family:Archivo,system-ui,sans-serif;font-weight:900;font-size:12px;letter-spacing:.16em;color:{rt};writing-mode:vertical-rl;transform:rotate(180deg);">VERDICT</span>
+    <p style="margin:0;font-family:Archivo,system-ui,sans-serif;font-weight:500;font-size:17.5px;line-height:1.5;color:#DDE1E5;max-width:88ch;">{esc(verdict)}</p>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(6,1fr);border-top:1px solid {_C['line']};border-bottom:1px solid {_C['line']};margin-bottom:56px;">{stat_html}</div>
+
+  {_section("01", "Completion &amp; coverage", f"{cov_n} / {cov_d} traceability links")}
+  <div style="display:grid;grid-template-columns:1.1fr 1fr;gap:52px;margin-bottom:60px;">
+    <div style="display:flex;flex-direction:column;gap:26px;">{"".join(meters)}{legend}</div>
+    <div><div class="chiplabel" style="margin-bottom:18px;">{docset_head}</div>{docset_rows}</div>
+  </div>
+
+  {roadmap_html}
+
+  {_section("03", "Risk register", hi_note)}
+  <div style="display:grid;grid-template-columns:340px 1fr;gap:44px;margin-bottom:64px;align-items:start;">
+    <div><div class="chiplabel" style="margin-bottom:16px;">HEAT MATRIX · PROBABILITY &times; IMPACT</div>
+      <div id="matrix"></div>
+      <div style="font-size:10px;color:{_C['faint']};margin-top:14px;line-height:1.6;">PROBABILITY &rarr;<br>Click a cell to isolate the risk below.</div></div>
+    <div>
+      <div id="riskctl" style="display:flex;gap:8px;align-items:center;margin-bottom:16px;flex-wrap:wrap;"></div>
+      <div style="display:grid;grid-template-columns:64px 1fr 84px 84px;gap:12px;padding:0 0 12px;border-bottom:1px solid {_C['line']};" class="chiplabel">
+        <span>ID</span><span>RISK</span><span style="text-align:center;">PROB</span><span style="text-align:center;">IMPACT</span></div>
+      <div id="risktable"></div>
+    </div>
+  </div>
+
+  {_section("04", "Documents", f"{c['total']} total · {passing} pass audit")}
+  <div id="docfilters" style="display:flex;gap:8px;margin-bottom:14px;"></div>
+  <div style="display:grid;grid-template-columns:1.4fr 1.6fr 1fr 60px;gap:16px;padding:0 0 12px;border-bottom:1px solid {_C['line']};" class="chiplabel">
+    <span>KIND</span><span>ID</span><span>STATUS</span><span style="text-align:right;">AUDIT</span></div>
+  <div id="doctable"></div>
+
+  <div id="worksect" style="display:none;">
+    {_section("05", "Work", work_aside)}
+    <div id="worktabs" style="display:flex;gap:20px;margin-bottom:16px;"></div>
+    <div style="display:grid;grid-template-columns:118px 1fr 118px 108px;gap:16px;padding:0 0 12px;border-bottom:1px solid {_C['line']};" class="chiplabel">
+      <span>TYPE</span><span>ITEM</span><span>ASSIGNEE</span><span style="text-align:right;">STATE</span></div>
+    <div id="worktable"></div>
+  </div>
+  {scope_html}
+
+  {activity_html}
+
+  <footer class="dc"><span>Generated by <span style="color:{_C['muted']};">docassert status</span> from the documents in this repository. Execution facts read from bridge issues; they never alter the derived status.</span>
+  <span>{esc(pid)} · {gen}</span></footer>
+</div>
+<script>const DATA = {payload};
+{_PAGE_JS}
+</script></body></html>
 """
 
 
-_RAG_COLOR = {"green": "var(--ok)", "amber": "var(--amber)", "red": "var(--bad)"}
+def _section(num, name, aside) -> str:
+    return (f'<div class="sect"><span class="num">{num}</span>'
+            f'<span class="name">{name}</span><span class="rule"></span>'
+            f'<span class="aside">{aside}</span></div>')
+
+
+_PAGE_JS = r"""
+const S = { sort:'severity', sel:null, open:{}, docF:'all', tab:'open' };
+const C = DATA.C;
+const PV = { low:1, medium:2, high:3, critical:3 };
+const zone = s => s>=6 ? {b:'rgba(240,78,78,.42)',s:'rgba(240,78,78,.15)',f:'rgba(240,78,78,.045)',t:C.red}
+  : s>=3 ? {b:'rgba(255,178,36,.4)',s:'rgba(255,178,36,.15)',f:'rgba(255,178,36,.045)',t:C.amberT}
+  : {b:'rgba(63,185,80,.36)',s:'rgba(63,185,80,.14)',f:'rgba(63,185,80,.045)',t:C.green};
+const lev = l => ({low:C.green, medium:C.amberT, high:C.red, critical:C.red}[l] || C.muted);
+const dispC = d => ({open:C.amberT, mitigated:C.green, accepted:C.muted, closed:C.muted}[d] || C.amberT);
+const esc = s => String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+
+function matrix(){
+  const el = document.getElementById('matrix'); if(!el) return;
+  const impacts=['high','medium','low'], probs=['low','medium','high'];
+  let h = '<div style="display:grid;grid-template-columns:34px 1fr 1fr 1fr;gap:6px;">';
+  impacts.forEach(im => {
+    h += `<span style="font-size:9px;letter-spacing:.1em;color:${C.dim};writing-mode:vertical-rl;transform:rotate(180deg);display:flex;align-items:center;justify-content:center;">${im.toUpperCase()}</span>`;
+    probs.forEach(pr => {
+      const inCell = DATA.risks.filter(r => r.disposition==='open' && r.prob===pr && (r.impact===im || (r.impact==='critical' && im==='high')));
+      const z = zone(PV[pr]*PV[im]); const occ = inCell.length>0;
+      const chips = inCell.map(r => `<span style="font-size:11px;font-weight:600;padding:2px 6px;border-radius:3px;border:1px solid ${z.b};color:${S.sel===r.id?C.bg:z.t};background:${S.sel===r.id?z.t:'transparent'};">${esc(r.short)}</span>`).join('');
+      h += `<div data-risk="${occ?inCell[0].id:''}" style="min-height:56px;border:1px solid ${occ?z.b:'#191d21'};background:${occ?z.s:z.f};border-radius:3px;display:flex;gap:4px;align-items:center;justify-content:center;flex-wrap:wrap;cursor:${occ?'pointer':'default'};">${chips}</div>`;
+    });
+  });
+  h += '<span></span>' + ['LOW','MED','HIGH'].map(x=>`<span style="font-size:9px;letter-spacing:.1em;color:${C.dim};text-align:center;padding-top:8px;">${x}</span>`).join('');
+  h += '</div>';
+  el.innerHTML = h;
+  el.querySelectorAll('[data-risk]').forEach(c => c.addEventListener('click', () => {
+    const id = c.getAttribute('data-risk'); if(!id) return;
+    S.sel = S.sel===id ? null : id; if(S.sel) S.open[id]=true; render();
+  }));
+}
+
+function riskCtl(){
+  const el = document.getElementById('riskctl'); if(!el) return;
+  const btn = (label,on,fn) => { const b=document.createElement('button'); b.className='btn'+(on?' on':''); b.textContent=label; b.addEventListener('click',fn); return b; };
+  el.innerHTML = '<span class="chiplabel" style="margin-right:2px;">SORT</span>';
+  el.appendChild(btn('severity', S.sort==='severity', ()=>{S.sort='severity';render();}));
+  el.appendChild(btn('id', S.sort==='id', ()=>{S.sort='id';render();}));
+  if(S.sel){ el.appendChild(btn('isolating '+S.sel.split('RISK-')[1]+' ×', true, ()=>{S.sel=null;render();})); }
+}
+
+function riskTable(){
+  const el = document.getElementById('risktable'); if(!el) return;
+  let rows = DATA.risks.slice();
+  if(S.sel) rows = rows.filter(r=>r.id===S.sel);
+  const score = r => PV[r.prob]*PV[r.impact];
+  if(S.sort==='severity') rows.sort((a,b)=> (a.disposition!=='open')-(b.disposition!=='open') || score(b)-score(a) || a.id.localeCompare(b.id));
+  else rows.sort((a,b)=>a.id.localeCompare(b.id));
+  el.innerHTML = rows.map(r => {
+    const open = !!S.open[r.id]; const sel = S.sel===r.id;
+    return `<div style="border-bottom:1px solid #16191c;background:${sel?'rgba(255,178,36,.05)':'transparent'};border-left:2px solid ${sel?C.amber:'transparent'};padding-left:12px;margin-left:-12px;">
+      <div data-row="${r.id}" style="display:grid;grid-template-columns:64px 1fr 84px 84px;gap:12px;padding:16px 0;cursor:pointer;align-items:start;">
+        <span style="font-size:11px;color:${C.muted};">${esc(r.short)}</span>
+        <div><div style="font-size:13px;color:${C.text};line-height:1.45;">${esc(r.desc)}</div>
+          <div style="font-size:10.5px;color:${C.dim};margin-top:6px;display:flex;gap:10px;align-items:center;">
+            <span>threatens ${esc(Array.isArray(r.threatens)?r.threatens.join(', '):r.threatens)}</span>
+            <span style="color:${dispC(r.disposition)};">${esc(r.disposition)}</span>
+            <span>owner ${esc(r.owner)}</span>
+            <span style="color:${C.faint};">${open?'▾ hide response':'▸ response'}</span></div></div>
+        <span style="text-align:center;font-size:12px;color:${lev(r.prob)};">${esc(r.prob)}</span>
+        <span style="text-align:center;font-size:12px;color:${lev(r.impact)};">${esc(r.impact)}</span></div>
+      ${open?`<div style="padding:0 0 20px 76px;"><div class="chiplabel" style="margin-bottom:8px;">RESPONSE</div><p style="margin:0;font-size:12.5px;color:${C.soft};line-height:1.6;max-width:70ch;">${esc(r.response)}</p></div>`:''}</div>`;
+  }).join('') || `<div style="padding:18px 0;font-size:12px;color:${C.muted};">No risks on the register.</div>`;
+  el.querySelectorAll('[data-row]').forEach(x => x.addEventListener('click', () => {
+    const id = x.getAttribute('data-row'); S.open[id]=!S.open[id]; render();
+  }));
+}
+
+function docs(){
+  const fe = document.getElementById('docfilters'), te = document.getElementById('doctable');
+  if(!fe || !te) return;
+  const statuses = ['all', ...new Set(DATA.docs.map(d=>d.status))];
+  fe.innerHTML='';
+  statuses.forEach(s => {
+    const n = s==='all' ? DATA.docs.length : DATA.docs.filter(d=>d.status===s).length;
+    const b=document.createElement('button'); b.className='btn'+(S.docF===s?' on':'');
+    b.textContent = s+' · '+n; b.addEventListener('click',()=>{S.docF=s;render();});
+    fe.appendChild(b);
+  });
+  const list = S.docF==='all' ? DATA.docs : DATA.docs.filter(d=>d.status===S.docF);
+  te.innerHTML = list.map(d => `<div style="display:grid;grid-template-columns:1.4fr 1.6fr 1fr 60px;gap:16px;padding:14px 0;border-bottom:1px solid #16191c;align-items:center;">
+    <span style="font-size:12.5px;color:${C.text};">${esc(d.kind)}</span>
+    <span class="mono-tag" style="justify-self:start;">${esc(d.id)}</span>
+    <span style="font-size:12px;color:${d.status==='active'?C.amberT:C.muted};">${esc(d.status)}</span>
+    <span style="text-align:right;color:${d.passing?C.green:C.red};font-size:14px;">${d.passing?'✓':'✗'}</span></div>`).join('');
+}
+
+function work(){
+  const sect = document.getElementById('worksect'); if(!sect) return;
+  if(!DATA.work.length){ sect.style.display='none'; return; }
+  sect.style.display='';
+  const tabs = document.getElementById('worktabs'), tbl = document.getElementById('worktable');
+  const openW = DATA.work.filter(w=>w.state!=='done'), doneW = DATA.work.filter(w=>w.state==='done');
+  tabs.innerHTML='';
+  [['open',openW.length],['done',doneW.length]].forEach(([k,n]) => {
+    const b=document.createElement('button'); b.className='tab'+(S.tab===k?' on':'');
+    b.textContent=k+' · '+n; b.addEventListener('click',()=>{S.tab=k;render();});
+    tabs.appendChild(b);
+  });
+  const stC = s => ({open:C.amberT, blocked:C.red, done:C.green}[s]);
+  const tyS = t => t==='FEATURE' ? `color:${C.blue};border:1px solid rgba(106,166,255,.35);background:rgba(106,166,255,.09);`
+                                 : `color:${C.orange};border:1px solid rgba(240,136,62,.35);background:rgba(240,136,62,.09);`;
+  const list = S.tab==='open' ? openW : doneW;
+  tbl.innerHTML = list.map(w => `<div style="display:grid;grid-template-columns:118px 1fr 118px 108px;gap:16px;padding:16px 0;border-bottom:1px solid #16191c;align-items:center;">
+    <div style="display:flex;flex-direction:column;gap:7px;align-items:flex-start;">
+      <span style="font-size:9px;font-weight:600;letter-spacing:.1em;padding:3px 8px;border-radius:3px;${tyS(w.type)}">${w.type}</span>
+      <span style="font-size:10px;color:${C.dim};">${esc(w.id)}</span></div>
+    <div><div style="font-size:13px;color:${C.text};line-height:1.45;">${w.url?`<a style="text-decoration:none;" href="${esc(w.url)}">${esc(w.title)}</a>`:esc(w.title)}</div>
+      <div style="font-size:10.5px;color:${C.dim};margin-top:6px;">linked ${esc(w.link)}</div></div>
+    <span style="font-size:11.5px;color:${C.muted};">${esc(w.assignee)}</span>
+    <span style="text-align:right;font-size:11.5px;color:${stC(w.state)};">${w.state==='done'?'done ✓':esc(w.state)}</span></div>`).join('');
+}
+
+function render(){ matrix(); riskCtl(); riskTable(); docs(); work(); }
+render();
+"""
+
+
+def _index_row(p) -> str:
+    """One server-rendered project row (the JS re-renders the same markup)."""
+    rc = {"GREEN": _C["green"], "AMBER": _C["amber"], "RED": _C["red"]}[p["rag"]]
+    cov = p["coverage"]
+    covc = _C["green"] if cov >= 95 else _C["amberT"] if cov >= 75 else _C["red"]
+    risks = p["risks"] or "none"
+    return (f'<a href="{esc(p["href"])}" style="display:grid;grid-template-columns:88px 1fr 100px 96px 96px 120px;'
+            f'gap:16px;padding:20px 12px 20px 0;border-bottom:1px solid #16191c;align-items:center;'
+            f'text-decoration:none;color:inherit;">'
+            f'<span style="font-size:10px;font-weight:600;letter-spacing:.12em;color:{_C["bg"]};'
+            f'background:{rc};padding:4px 0;border-radius:3px;text-align:center;align-self:start;margin-top:2px;">{p["rag"]}</span>'
+            f'<div><div style="font-family:Archivo,system-ui,sans-serif;font-weight:700;font-size:15px;color:#F1F3F5;line-height:1.2;">{esc(p["name"])}</div>'
+            f'<div style="font-size:10.5px;color:{_C["dim"]};margin-top:5px;display:flex;gap:10px;">'
+            f'<span>{esc(p["id"])}</span><span>·</span><span>{esc(p["sponsor"])}</span></div></div>'
+            f'<div style="text-align:center;"><div style="font-size:12.5px;color:{covc};">{cov}%</div>'
+            f'<div style="height:4px;background:#16191c;margin-top:7px;border-radius:2px;overflow:hidden;">'
+            f'<span style="display:block;height:100%;width:{cov}%;background:{covc};"></span></div></div>'
+            f'<span style="text-align:center;font-size:12.5px;color:{_C["soft"]};">{esc(p["docs"])}</span>'
+            f'<span style="text-align:center;font-size:12px;color:{_C["amberT"] if p["risks"] else _C["faint"]};">{risks}</span>'
+            f'<span style="text-align:right;font-size:11.5px;color:{_C["muted"]};">{esc(p["next"])}</span></a>')
+
+
+def render_index_html(index) -> str:
+    """The portfolio overview: health distribution + filterable project rows."""
+    overall = index["overall"]["rag"]
+    gen = _now_utc()
+    projs = index["projects"]
+    counts = {"green": 0, "amber": 0, "red": 0}
+    for p in projs:
+        counts[p["rag"]] += 1
+
+    rows_data = []
+    for p in projs:
+        comp = p.get("completeness")
+        docs = (f"{comp['required_complete']}/{comp['required_total']}"
+                if comp and not comp.get("unknown") else str(p["total"]))
+        rows_data.append({
+            "rag": p["rag"].upper(), "name": p["name"], "id": p["id"],
+            "sponsor": p["sponsor"], "coverage": p.get("coverage_pct", 100),
+            "docs": docs, "risks": p["risks"],
+            "next": p.get("next") or "—", "href": f'{p["id"]}.html',
+        })
+    payload = _json_embed({"projects": rows_data, "C": _C})
+
+    order = {"RED": 0, "AMBER": 1, "GREEN": 2}
+    static_rows = "".join(_index_row(r) for r in
+                          sorted(rows_data, key=lambda x: (order[x["rag"]], -x["risks"])))
+
+    def cell(label, count, col, dot):
+        return (f'<div style="padding:22px 20px;border-left:1px solid {_C["line"]};">'
+                f'<div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">'
+                f'<span style="width:9px;height:9px;border-radius:50%;background:{dot};display:inline-block;"></span>'
+                f'<span class="chiplabel">{label}</span></div>'
+                f'<div style="font-family:Archivo,system-ui,sans-serif;font-weight:800;font-size:30px;line-height:1;color:{col};'
+                f'font-variant-numeric:tabular-nums;">{count}</div></div>')
+    health = (cell("ON TRACK", counts["green"], _C["green"], _C["green"])
+              + cell("AT RISK", counts["amber"], _C["amberT"], _C["amber"])
+              + cell("OFF TRACK", counts["red"], _C["red"], _C["red"])
+              + cell("TOTAL", len(projs), _C["text"], "#3a4046"))
+    dist = "".join(
+        f'<span style="flex:{counts[k] or 0.0001};background:{_RAGC[k]};border-radius:2px;"></span>'
+        for k in ("green", "amber", "red"))
+
+    return f"""<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PMO as Code — Portfolio</title>{_FONTS}
+<style>{_BASE_CSS}</style></head>
+<body><div class="wrap">
+  <div class="rail"><span style="display:flex;align-items:center;gap:10px;"><span class="livedot"></span>
+    docassert&nbsp;status · portfolio</span><span>{gen}</span></div>
+  <div style="border-top:2px solid {_RAGC[overall]};padding-top:26px;margin-bottom:44px;">
+    <div style="font-size:11px;letter-spacing:.18em;color:{_C['dim']};margin-bottom:14px;">PORTFOLIO OVERVIEW</div>
+    <h1 style="font-family:Archivo,system-ui,sans-serif;font-weight:800;font-size:46px;line-height:1.02;letter-spacing:-.02em;margin:0 0 14px;color:{_C['bright']};">All projects</h1>
+    <div style="font-size:12.5px;color:{_C['muted']};line-height:1.7;max-width:70ch;">
+      {len(projs)} project(s) derived from repository documents. Health is a rollup of coverage,
+      document approval, open risk, and review freshness — regenerated on every commit, never hand-edited.</div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;border-top:1px solid {_C['line']};border-bottom:1px solid {_C['line']};margin-bottom:14px;">{health}</div>
+  <div style="display:flex;height:8px;gap:3px;margin-bottom:52px;">{dist}</div>
+  <div style="display:flex;align-items:baseline;gap:16px;margin-bottom:22px;">
+    <span style="font-family:Archivo,system-ui,sans-serif;font-weight:700;font-size:15px;letter-spacing:.03em;color:{_C['text']};text-transform:uppercase;">Projects</span>
+    <span style="flex:1;height:1px;background:{_C['line']};"></span>
+    <div id="filters" style="display:flex;gap:8px;"></div></div>
+  <div style="display:grid;grid-template-columns:88px 1fr 100px 96px 96px 120px;gap:16px;padding:0 0 12px;border-bottom:1px solid {_C['line']};" class="chiplabel">
+    <span>HEALTH</span><span>PROJECT</span><span style="text-align:center;">COVERAGE</span><span style="text-align:center;">DOCS</span><span style="text-align:center;">RISKS</span><span style="text-align:right;">NEXT</span></div>
+  <div id="rows">{static_rows}</div>
+  <footer class="dc"><span>Generated by <span style="color:{_C['muted']};">docassert pages</span> from the documents in this repository.</span><span>{gen}</span></footer>
+</div>
+<script>const DATA = {payload};
+const C = DATA.C; let F='all';
+const esc = s => String(s).replace(/[&<>"']/g, m => ({{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}}[m]));
+const ragC = r => ({{GREEN:C.green, AMBER:C.amber, RED:C.red}})[r];
+function render() {{
+  const fe = document.getElementById('filters'), re = document.getElementById('rows');
+  fe.innerHTML='';
+  ['all','GREEN','AMBER','RED'].forEach(k => {{
+    const b=document.createElement('button'); b.className='btn'+(F===k?' on':'');
+    b.textContent=k.toLowerCase(); b.addEventListener('click',()=>{{F=k;render();}});
+    fe.appendChild(b);
+  }});
+  let list = DATA.projects.slice();
+  if(F!=='all') list = list.filter(p=>p.rag===F);
+  const order = {{RED:0, AMBER:1, GREEN:2}};
+  list.sort((a,b)=>order[a.rag]-order[b.rag] || b.risks-a.risks);
+  re.innerHTML = list.map(p => {{
+    const rc = ragC(p.rag);
+    const covC = p.coverage>=95?C.green:p.coverage>=75?C.amberT:C.red;
+    return `<a href="${{esc(p.href)}}" style="display:grid;grid-template-columns:88px 1fr 100px 96px 96px 120px;gap:16px;padding:20px 12px 20px 0;border-bottom:1px solid #16191c;align-items:center;text-decoration:none;color:inherit;">
+      <span style="font-size:10px;font-weight:600;letter-spacing:.12em;color:${{C.bg}};background:${{rc}};padding:4px 0;border-radius:3px;text-align:center;align-self:start;margin-top:2px;">${{p.rag}}</span>
+      <div><div style="font-family:Archivo,system-ui,sans-serif;font-weight:700;font-size:15px;color:#F1F3F5;line-height:1.2;">${{esc(p.name)}}</div>
+        <div style="font-size:10.5px;color:${{C.dim}};margin-top:5px;display:flex;gap:10px;"><span>${{esc(p.id)}}</span><span>·</span><span>${{esc(p.sponsor)}}</span></div></div>
+      <div style="text-align:center;"><div style="font-size:12.5px;color:${{covC}};">${{p.coverage}}%</div>
+        <div style="height:4px;background:#16191c;margin-top:7px;border-radius:2px;overflow:hidden;"><span style="display:block;height:100%;width:${{p.coverage}}%;background:${{covC}};"></span></div></div>
+      <span style="text-align:center;font-size:12.5px;color:${{C.soft}};">${{esc(p.docs)}}</span>
+      <span style="text-align:center;font-size:12px;color:${{p.risks?C.amberT:C.faint}};">${{p.risks||'none'}}</span>
+      <span style="text-align:right;font-size:11.5px;color:${{C.muted}};">${{esc(p.next)}}</span></a>`;
+  }}).join('');
+}}
+render();
+</script></body></html>
+"""
+
 _BADGE_COLOR = {"green": "brightgreen", "amber": "orange", "red": "red"}
 
 
@@ -322,35 +847,6 @@ def render_badge_json(rag: str, label: str = "pmo docs") -> str:
     so a README can carry a live derived-status badge."""
     return json.dumps({"schemaVersion": 1, "label": label,
                        "message": rag, "color": _BADGE_COLOR[rag]}) + "\n"
-
-
-def _index_card(p, esc) -> str:
-    dot = _RAG_COLOR[p["rag"]]
-
-    def plural(n, word):
-        return f"{n} {word}" + ("s" if n != 1 else "")
-
-    stats = [plural(p["total"], "doc")]
-    comp = p.get("completeness")
-    if comp and not comp.get("unknown"):
-        stats.append(f'{comp["required_complete"]}/{comp["required_total"]} required')
-    if p["risks"]:
-        stats.append(plural(p["risks"], "open risk"))
-    if p["coverage_gaps"]:
-        stats.append(plural(p["coverage_gaps"], "coverage gap"))
-    if p["failing"]:
-        stats.append(plural(p["failing"], "failing doc"))
-    if p["broken"]:
-        stats.append(plural(p["broken"], "broken ref"))
-
-    return (f'<a class="card" href="{esc(p["id"])}.html">'
-            f'<div class="card-h"><span class="dot" style="background:{dot}"></span>'
-            f'<span class="rag-t" style="color:{dot}">{esc(p["rag"].upper())}</span>'
-            f'<span class="code">{esc(p["code"])}</span></div>'
-            f'<div class="name">{esc(p["name"])}</div>'
-            f'<div class="pid">{esc(p["id"])} · {esc(p["lifecycle"])}</div>'
-            f'<div class="sponsor">Sponsor: {esc(p["sponsor"])}</div>'
-            f'<div class="stats">{" · ".join(esc(s) for s in stats)}</div></a>')
 
 
 def render_index_markdown(index) -> str:
@@ -367,31 +863,3 @@ def render_index_markdown(index) -> str:
             f"| {p['name']} | `{p['code']}` | {_EMOJI[p['rag']]} {p['rag'].upper()} "
             f"| {p['total']} | {required} | {p['risks']} | {p['sponsor']} |")
     return "\n".join(out) + "\n"
-
-
-def render_index_html(index) -> str:
-    """The multi-project landing page: one linked RAG card per project."""
-    import datetime
-
-    overall = index["overall"]["rag"]
-    ocolor = _RAG_COLOR[overall]
-    gen = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
-    cards = "".join(_index_card(p, esc) for p in index["projects"])
-    n = len(index["projects"])
-
-    return f"""<!doctype html>
-<html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>PMO as Code — Projects</title>
-<style>{_HTML_CSS}{_INDEX_CSS}</style></head>
-<body><main>
-  <header>
-    <span class="rag" style="background:{ocolor}">{overall.upper()}</span>
-    <h1>Projects</h1>
-  </header>
-  <p class="meta">{n} project(s) · derived portfolio health · generated {gen}.
-    Each card's RAG is computed from that project's own documents.</p>
-  <section class="grid">{cards}</section>
-  <footer>Generated by <code>docassert pages</code> from the documents in this repository.</footer>
-</main></body></html>
-"""

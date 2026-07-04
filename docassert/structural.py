@@ -270,6 +270,21 @@ def check_risk_disposition_valid(doc: Document, ctx: dict) -> tuple[bool, str]:
     return True, f"All {total} risk disposition(s) valid (absent means open)."
 
 
+MILESTONE_DATE_RE = re.compile(r"[:\u2014\u2013-]\s*(\d{4}-\d{2}-\d{2})\.?\s*$")
+
+
+def check_milestones_dated(doc: Document, ctx: dict) -> tuple[bool, str]:
+    """At least one Milestones bullet ends with an ISO date (advisory)."""
+    section = doc.section("Milestones")
+    if section is None:
+        return False, "No Milestones section."
+    dated = [b for b in section.list_items if MILESTONE_DATE_RE.search(b)]
+    if not dated:
+        return False, ("no dated milestone bullets (`- <label>: YYYY-MM-DD` or a dash separator); "
+                       "timelines have nothing to draw")
+    return True, f"{len(dated)} dated milestone(s)."
+
+
 def check_svc_items_complete(doc: Document, ctx: dict) -> tuple[bool, str]:
     """Every SVC item states a Level and a Measure."""
     incomplete, total = [], 0
@@ -448,6 +463,7 @@ CHECKS: dict[str, Callable[[Document, dict], tuple[bool, str]]] = {
     "risk-items-complete": check_risk_items_complete,
     "risk-disposition-valid": check_risk_disposition_valid,
     "svc-items-complete": check_svc_items_complete,
+    "milestones-dated": check_milestones_dated,
     "ops-review-fresh": check_ops_review_fresh,
     "adr-items-have-status": check_adr_items_have_status,
     "raci-one-accountable": check_raci_one_accountable,

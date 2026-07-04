@@ -113,6 +113,37 @@ def _broken_references(graph, code=None):
     return broken
 
 
+_MS_RE = re.compile(r"^(?P<label>.+?)[:\u2014\u2013-]\s*(?P<date>\d{4}-\d{2}-\d{2})\.?\s*$")
+
+
+def _milestones(docs):
+    """Dated charter milestones as temporal facts (never completion claims)."""
+    import datetime
+    today = datetime.date.today()
+    out = []
+    for d in docs:
+        if d.kind != "charter":
+            continue
+        section = d.section("Milestones")
+        if section is None:
+            continue
+        for bullet in section.list_items:
+            m = _MS_RE.match(bullet.strip())
+            if not m:
+                continue
+            try:
+                due = datetime.date.fromisoformat(m.group("date"))
+            except ValueError:
+                continue
+            delta = (due - today).days
+            out.append({"label": m.group("label").strip(),
+                        "date": due.isoformat(),
+                        "days": delta,
+                        "when": ("today" if delta == 0 else
+                                 "elapsed" if delta < 0 else "upcoming")})
+    return sorted(out, key=lambda x: x["date"])
+
+
 def _operations(docs):
     """Operations documents with their review state."""
     import datetime
@@ -199,6 +230,7 @@ def build_status(documents_dir=DOCUMENTS_DIR, project: str | None = None) -> dic
         "coverage": _coverage(graph, cfg, code),
         "risks": _risks(graph, code),
         "operations": _operations(docs),
+        "milestones": _milestones(docs),
         "broken_references": _broken_references(graph, code),
         "latest_report": _latest_report(docs),
         "completeness": completeness,
@@ -231,6 +263,19 @@ def completeness_report(documents_dir=DOCUMENTS_DIR) -> list[dict]:
     return out
 
 
+def _next_dated(m) -> str | None:
+    """The nearest upcoming dated marker (milestone or operations review)."""
+    import datetime
+    cands = [x["date"] for x in m.get("milestones", []) if x["days"] >= 0]
+    for o in m.get("operations", []):
+        try:
+            if datetime.date.fromisoformat(o["review_by"]) >= datetime.date.today():
+                cands.append(o["review_by"])
+        except ValueError:
+            pass
+    return min(cands) if cands else None
+
+
 def build_index(documents_dir=DOCUMENTS_DIR) -> dict:
     """The multi-project view: each project's derived RAG + headline signals,
     plus the whole-repo rollup."""
@@ -246,6 +291,10 @@ def build_index(documents_dir=DOCUMENTS_DIR) -> dict:
             "failing": m["counts"]["failing"],
             "risks": len([r for r in m["risks"] if r.get("disposition", "open") == "open"]),
             "coverage_gaps": sum(len(c["gaps"]) for c in m["coverage"]),
+            "coverage_pct": (round(100 * sum(c["covered"] for c in m["coverage"])
+                                   / max(1, sum(c["total"] for c in m["coverage"])))
+                             if any(c["total"] for c in m["coverage"]) else 100),
+            "next": _next_dated(m),
             "broken": len(m["broken_references"]),
             "completeness": m.get("completeness"),
         })

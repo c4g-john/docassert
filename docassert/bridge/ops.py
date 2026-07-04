@@ -222,6 +222,19 @@ def status(plan: BridgePlan, gh: G.GhRunner, repo: str) -> dict:
                              "doc": key})
     out: dict = {"repo": repo, "projects": [],
                  "scope": {"unverified": unverified, "orphaned": orphaned}}
+    def facts(key):
+        """Real, presentational issue facts (never fed back into derivation)."""
+        issue = by_key.get(key) or {}
+        return {
+            "title": issue.get("title"),
+            "state": issue.get("state"),
+            "created_at": (issue.get("created_at") or "")[:10] or None,
+            "closed_at": (issue.get("closed_at") or "")[:10] or None,
+            "url": issue.get("html_url"),
+            "assignee": (issue.get("assignee") or {}).get("login"),
+            "labels": [lb.get("name") for lb in issue.get("labels") or []],
+        }
+
     for p in plan.projects:
         feats = []
         for f in p["features"]:
@@ -229,6 +242,10 @@ def status(plan: BridgePlan, gh: G.GhRunner, repo: str) -> dict:
             feats.append({
                 "id": f.id,
                 "issue": (by_key.get(f.id) or {}).get("number"),
+                "facts": facts(f.id),
+                "stories": [{"id": s.id,
+                             "issue": (by_key.get(s.id) or {}).get("number"),
+                             "facts": facts(s.id)} for s in f.stories],
                 "stories_total": len(f.stories),
                 "stories_closed": sum(1 for s in states if s == "closed"),
                 "closed": (by_key.get(f.id) or {}).get("state") == "closed",

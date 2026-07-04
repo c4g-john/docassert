@@ -42,7 +42,7 @@ def test_pages_execution_panels(tmp_path, monkeypatch):
     out = tmp_path / "site"
     assert main(["pages", "--out", str(out), "--execution", str(exec_file)]) == 0
     html = (out / "PRJ-001-AUR.html").read_text()
-    assert "Delivery · 1/2 stories closed" in html
-    assert "AUR-PR-014" in html and "Every open issue matches" in html
+    assert "1/2 stories closed" in html
+    assert "AUR-PR-014" in html and "every open issue matches" in html
     other = (out / "PRJ-002-ATL.html").read_text()
     assert "Delivery ·" not in other   # no execution data, no panel
