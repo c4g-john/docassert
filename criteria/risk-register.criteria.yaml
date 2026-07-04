@@ -30,6 +30,11 @@ checks:
     type: structural
     blocking: once-proposed
     description: Every risk states a Probability, Impact, Owner, and Response.
+  - id: risk-disposition-valid
+    type: structural
+    blocking: true
+    description: Any Status field on a RISK item names a valid disposition (open/mitigated/accepted/closed).
+
   - id: unique-id
     type: structural
     blocking: true

@@ -55,8 +55,12 @@ def render_markdown(model, summary: bool = False) -> str:
         out.append(f"- 🔴 **Documents failing audit**: {', '.join(failing)}")
 
     if model["risks"]:
-        out.append(f"- 🟠 **Open risks**: {len(model['risks'])}")
-        for r in model["risks"][:5]:
+        open_r = [r for r in model["risks"] if r.get("disposition", "open") == "open"]
+        rest = len(model["risks"]) - len(open_r)
+        mark = "🟠" if open_r else "🟢"
+        out.append(f"- {mark} **Open risks**: {len(open_r)}"
+                   + (f" ({rest} dispositioned)" if rest else ""))
+        for r in open_r[:5]:
             out.append(f"    - `{r['id']}` — {r['probability']}/{r['impact']} · owner: {r['owner']}")
 
     lr = model["latest_report"]
@@ -149,6 +153,12 @@ def render_html(model) -> str:
                      value, "var(--muted)")
         return f'<td style="color:{color};font-weight:600;">{esc(value)}</td>'
 
+    def disp(value):
+        color = {"open": "var(--amber)", "mitigated": "var(--ok)",
+                 "accepted": "var(--muted)", "closed": "var(--muted)"}.get(
+                     value, "var(--amber)")
+        return f'<td style="color:{color};font-weight:600;">{esc(value)}</td>'
+
     if model["risks"]:
         risk_rows = "".join(
             f'<tr><td><code>{esc(r["id"])}</code></td>'
@@ -156,11 +166,12 @@ def render_html(model) -> str:
             f'<td>{", ".join(f"<code>{esc(b)}</code>" for b in r["threatens"]) or "—"}</td>'
             + sev(r["probability"]) + sev(r["impact"])
             + f'<td>{esc(r["owner"])}</td>'
-            f'<td>{esc(r["response"]) or "—"}</td></tr>'
+            + disp(r.get("disposition", "open"))
+            + f'<td>{esc(r["response"]) or "—"}</td></tr>'
             for r in model["risks"])
         risks = ('<table><thead><tr><th>ID</th><th>Risk</th><th>Threatens</th>'
                  '<th>Probability</th><th>Impact</th><th>Owner</th>'
-                 '<th>Response</th></tr></thead>'
+                 '<th>Status</th><th>Response</th></tr></thead>'
                  f'<tbody>{risk_rows}</tbody></table>')
     else:
         risks = "<p>None open.</p>"
@@ -280,7 +291,7 @@ def render_html(model) -> str:
   {document_set}
   {execution_html}
   {problems}
-  <section><h2>Open risks ({len(model['risks'])})</h2>{risks}</section>
+  <section><h2>Risks ({len([r for r in model['risks'] if r.get('disposition', 'open') == 'open'])} open of {len(model['risks'])})</h2>{risks}</section>
   <section><h2>Latest status report</h2><p>{report}</p></section>
   <section><h2>Documents ({c['total']})</h2>
     <table><thead><tr><th>Kind</th><th>ID</th><th>Status</th><th>Audit</th></tr></thead>
