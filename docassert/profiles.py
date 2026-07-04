@@ -2,8 +2,10 @@
 
 A profile (profiles/<name>.yaml) lists the document kinds a project is expected
 to carry, at two levels:
-  - required    : must be present and complete; a missing one blocks CI once the
-                  project reaches the profile's `enforce_when` lifecycle stage.
+  - required    : must be present and complete; a missing one blocks CI while
+                  the project's status equals the profile's `enforce_when`
+                  stage (deliberately exact: an on-hold or closed project is
+                  not punished for its document set).
   - recommended : surfaced as a gap on the project page, but never blocking.
 
 A project opts in with `profile: <name>` in its project.md. No profile means no

@@ -15,9 +15,7 @@ FIELD_SPECS: dict[str, dict] = {
     "PMO Project": {"dataType": "TEXT"},
 }
 
-_FIELDS_QUERY = """
-query($owner: String!, $number: Int!) {
-  user(login: $owner) {
+_PROJECT_FRAGMENT = """
     projectV2(number: $number) {
       id
       title
@@ -28,8 +26,18 @@ query($owner: String!, $number: Int!) {
         }
       }
     }
-  }
-}
+"""
+
+_FIELDS_QUERY = f"""
+query($owner: String!, $number: Int!) {{
+  user(login: $owner) {{ {_PROJECT_FRAGMENT} }}
+}}
+"""
+
+_FIELDS_QUERY_ORG = f"""
+query($owner: String!, $number: Int!) {{
+  organization(login: $owner) {{ {_PROJECT_FRAGMENT} }}
+}}
 """
 
 
@@ -48,7 +56,23 @@ def create_project(gh: GhRunner, title: str) -> dict:
 
 
 def get_project(gh: GhRunner, owner: str, number: int) -> dict:
-    proj = gh.graphql(_FIELDS_QUERY, owner=owner, number=number)["user"]["projectV2"]
+    """Look the board up under a user owner first, then an organization —
+    GraphQL has no owner-agnostic ProjectV2 lookup, and a login of the wrong
+    type raises NOT_FOUND rather than returning null."""
+    proj = None
+    try:
+        proj = (gh.graphql(_FIELDS_QUERY, owner=owner, number=number)
+                .get("user") or {}).get("projectV2")
+    except GhError:
+        pass
+    if proj is None:
+        try:
+            proj = (gh.graphql(_FIELDS_QUERY_ORG, owner=owner, number=number)
+                    .get("organization") or {}).get("projectV2")
+        except GhError:
+            pass
+    if proj is None:
+        raise GhError(f"no ProjectV2 #{number} owned by '{owner}' (user or organization)")
     fields = {}
     for node in proj["fields"]["nodes"]:
         if not node:

@@ -37,10 +37,16 @@ def _marker_of(issue: dict) -> str | None:
 
 
 def _index(issues: list[dict]) -> dict[str, dict]:
+    """marker -> its authoritative issue. The REST API lists issues newest
+    first, and a converged duplicate is always newer than the issue it lost
+    to — so rank open before closed, then lowest number, or a closed
+    duplicate would shadow the real open issue and report it as done."""
+    def rank(issue: dict) -> tuple:
+        return (issue.get("state") != "open", issue.get("number", 0))
     out: dict[str, dict] = {}
     for i in issues:
         key = _marker_of(i)
-        if key and key not in out:          # first (oldest) wins
+        if key and (key not in out or rank(i) < rank(out[key])):
             out[key] = i
     return out
 

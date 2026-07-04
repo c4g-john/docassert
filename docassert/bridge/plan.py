@@ -186,8 +186,11 @@ def plans_by_repo(plan: BridgePlan) -> dict[str, BridgePlan]:
             + " (add `repo: OWNER/NAME` to project.md or pass --repo)")
     groups: dict[str, BridgePlan] = {}
     for proj in plan.projects:
-        groups.setdefault(proj["repo"],
-                          BridgePlan(skipped=plan.skipped)).projects.append(proj)
+        if proj["repo"] not in groups:
+            # Each sub-plan gets its own copy: shared state across repos would
+            # let one repo's run mutate another's, and skip lines print per repo.
+            groups[proj["repo"]] = BridgePlan(skipped=list(plan.skipped))
+        groups[proj["repo"]].projects.append(proj)
     return groups
 
 
