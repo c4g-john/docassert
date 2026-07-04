@@ -367,3 +367,15 @@ def test_after_cycle_blocks(tmp_path):
     g = build_graph(_seq_tree(tmp_path, cyclic=True))
     r = check_sequence_acyclic(g)
     assert not r.passed and r.blocking and "after-cycle" in r.detail
+
+
+def test_report_tooltips_present(tmp_path):
+    _cd_root()
+    m = S.build_status(_seq_tree(tmp_path), project="PRJ-001-SQ")
+    out = S.render_html(m)
+    assert 'title="Derived RAG.' in out            # stat derivation
+    assert "not that the milestone completed" in out or "Temporal fact" in out
+    assert "scope point(s) = " in out              # bar breakdown tooltip
+    assert 'title="Causes:' in out or "No amber or red causes" in out
+    idx = S.render_index_html(S.build_index(ROOT / "documents"))
+    assert "nearest upcoming dated marker" in idx

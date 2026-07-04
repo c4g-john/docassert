@@ -142,6 +142,31 @@ def _today():
     return datetime.date.today()
 
 
+def _verdict_causes(model) -> list[str]:
+    """The raw cause strings behind the verdict (also the verdict tooltip)."""
+    causes = []
+    gaps = [c for c in model["coverage"] if c["gaps"]]
+    if gaps:
+        causes.append(f"{len(gaps)} coverage chain(s) with gaps")
+    failing = [d for d in model["documents"] if not d["passing"]]
+    if failing:
+        causes.append(f"{len(failing)} document(s) failing audit")
+    if model["broken_references"]:
+        causes.append(f"{len(model['broken_references'])} broken reference(s)")
+    comp = model.get("completeness")
+    if comp and comp.get("blocks"):
+        causes.append("required documents missing under an enforced profile")
+    thr = model.get("risk_amber_score", 6)
+    open_r = [r for r in model["risks"] if r.get("disposition", "open") == "open"
+              and (thr == 0 or r.get("score", 0) >= thr)]
+    if open_r:
+        causes.append(f"{len(open_r)} open risk(s) at or above the appetite (score ≥ {thr})")
+    stale = [o for o in model.get("operations", []) if not o["fresh"]]
+    if stale:
+        causes.append(f"operations review overdue since {stale[0]['review_by']}")
+    return causes
+
+
 def _verdict(model) -> str:
     """One decision-grade sentence composed only from recorded causes."""
     rag = model["rag"]
@@ -259,8 +284,16 @@ def render_html(model) -> str:
          (f"{esc(nxt[1])} · {nxt[2]}" if nxt else "no dated milestone")),
         ("DOC SET", docset_v, docset_c, docset_sub),
     ]
+    stat_tips = {
+        "HEALTH": "Derived RAG. Red: failing approved docs, broken references, or enforced profile gaps. Amber: coverage gaps, open risks at or above the risk appetite, stale operations review, or an amber/red status report. Green: none of those.",
+        "DOCS APPROVED": "Documents with approved or baselined status, of all documents in this project. The sub-line counts documents passing every blocking structural check.",
+        "COVERAGE": "Traceability links present over links required, across every configured chain (BR→PR, PR→AC, AC→TC, and any others).",
+        "OPEN RISKS": "Risks with disposition open. Dispositioned risks (mitigated, accepted, closed) stay on the register as record but do not count here.",
+        "NEXT MILESTONE": "Days to the nearest upcoming dated marker: a dated charter milestone or the operations review. Temporal fact only.",
+        "DOC SET": "Profile completeness: required kinds complete (approved and passing audit) over required kinds expected.",
+    }
     stat_html = "".join(
-        f'<div style="padding:22px 20px;border-left:1px solid {_C["line"]};">'
+        f'<div title="{esc(stat_tips.get(k, ""))}" style="cursor:help;padding:22px 20px;border-left:1px solid {_C["line"]};">'
         f'<div class="chiplabel" style="margin-bottom:14px;">{k}</div>'
         f'<div style="font-family:Archivo,system-ui,sans-serif;font-weight:800;font-size:30px;letter-spacing:-.02em;'
         f'line-height:1;color:{col};font-variant-numeric:tabular-nums;">{esc(v)}</div>'
@@ -278,8 +311,11 @@ def render_html(model) -> str:
             f'{_C["green"] if i < filled else _C["line"]};"></span>'
             for i in range(cells))
         ratio_c = _C["green"] if covered == total else _C["amberT"]
+        tip = ("all links traced" if not cov["gaps"] else
+               "gaps: " + ", ".join(cov["gaps"]))
         meters.append(
-            f'<div><div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:11px;">'
+            f'<div title="{esc(tip)}" style="cursor:help;">'
+            f'<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:11px;">'
             f'<span style="font-size:12.5px;color:{_C["soft"]};">{esc(cov["label"])}</span>'
             f'<span style="font-family:Archivo,system-ui,sans-serif;font-weight:700;font-size:13px;color:{ratio_c};">'
             f'{covered}/{total}</span></div><div style="display:flex;gap:4px;">{cell_html}</div></div>')
@@ -342,8 +378,11 @@ def render_html(model) -> str:
             if m["when"] == "elapsed":
                 return f'color:{_C["muted"]};background:#14181b;'
             return f'color:{_C["muted"]};background:#14181b;'
+        ms_tip = ("Temporal fact only: elapsed means the date passed, "
+                  "not that the milestone completed (spec §13.2).")
         cols = "".join(
-            f'<div style="display:flex;flex-direction:column;align-items:flex-start;">'
+            f'<div title="{esc(m["label"])} · {esc(m["date"])} · {esc(ms_tip)}" '
+            f'style="cursor:help;display:flex;flex-direction:column;align-items:flex-start;">'
             f'<span style="display:block;width:14px;height:14px;border-radius:50%;'
             f'border:2px solid {_C["bg"]};{_dot(m)}"></span>'
             f'<div style="font-family:Archivo,system-ui,sans-serif;font-weight:700;font-size:13px;color:{_C["text"]};'
@@ -392,8 +431,13 @@ def render_html(model) -> str:
             width = max(6.0, (f["points"] / maxp) * (colw - 3))
             left = f["layer"] * colw + 1
             dep = f' · after {", ".join(esc(d) for d in f["after"])}' if f["after"] else ""
+            bar_tip = (f'{f["text"]} — {f["points"]} scope point(s) = '
+                       f'{f["stories"]} story(ies) + {f["acs"]} acceptance criteria. '
+                       + (f'Sequenced after {", ".join(f["after"])}. ' if f["after"] else "")
+                       + ("State from the bridge issue." if f["id"] in ex_state
+                          else "No execution data yet: scoped only."))
             rows_html.append(
-                f'<div style="display:grid;grid-template-columns:186px 1fr;align-items:center;'
+                f'<div title="{esc(bar_tip)}" style="cursor:help;display:grid;grid-template-columns:186px 1fr;align-items:center;'
                 f'border-bottom:1px solid #14181b;">'
                 f'<div style="padding-right:14px;"><div style="font-size:12px;color:{_C["soft"]};'
                 f'line-height:1.3;">{esc(f["text"])[:52]}</div>'
@@ -490,6 +534,8 @@ def render_html(model) -> str:
     work_aside = (f"{ex.get('stories_closed', 0)}/{ex.get('stories_total', 0)} stories closed"
                   if ex else "bridge-managed issues")
     verdict = _verdict(model)
+    causes = _verdict_causes(model)
+    verdict_tip = ("Causes: " + "; ".join(causes)) if causes else "No amber or red causes recorded."
     payload = _json_embed({"risks": risks_data, "docs": docs_data, "work": work_data,
                            "C": _C})
 
@@ -524,7 +570,7 @@ def render_html(model) -> str:
 
   <div style="display:flex;gap:18px;margin:28px 0 44px;padding:20px 22px;background:rgba(255,178,36,.06);border-left:3px solid {rc};">
     <span style="font-family:Archivo,system-ui,sans-serif;font-weight:900;font-size:12px;letter-spacing:.16em;color:{rt};writing-mode:vertical-rl;transform:rotate(180deg);">VERDICT</span>
-    <p style="margin:0;font-family:Archivo,system-ui,sans-serif;font-weight:500;font-size:17.5px;line-height:1.5;color:#DDE1E5;max-width:88ch;">{esc(verdict)}</p>
+    <p title="{esc(verdict_tip)}" style="cursor:help;margin:0;font-family:Archivo,system-ui,sans-serif;font-weight:500;font-size:17.5px;line-height:1.5;color:#DDE1E5;max-width:88ch;">{esc(verdict)}</p>
   </div>
 
   <div style="display:grid;grid-template-columns:repeat(6,1fr);border-top:1px solid {_C['line']};border-bottom:1px solid {_C['line']};margin-bottom:56px;">{stat_html}</div>
@@ -609,7 +655,7 @@ function matrix(){
     probs.forEach(pr => {
       const inCell = DATA.risks.filter(r => r.disposition==='open' && r.prob===pr && (r.impact===im || (r.impact==='critical' && im==='high')));
       const z = zone(PV[pr]*PV[im]); const occ = inCell.length>0;
-      const chips = inCell.map(r => `<span style="font-size:11px;font-weight:600;padding:2px 6px;border-radius:3px;border:1px solid ${z.b};color:${S.sel===r.id?C.bg:z.t};background:${S.sel===r.id?z.t:'transparent'};">${esc(r.short)}</span>`).join('');
+      const chips = inCell.map(r => `<span title="${esc(r.id)}: ${esc(r.desc)}" style="cursor:help;font-size:11px;font-weight:600;padding:2px 6px;border-radius:3px;border:1px solid ${z.b};color:${S.sel===r.id?C.bg:z.t};background:${S.sel===r.id?z.t:'transparent'};">${esc(r.short)}</span>`).join('');
       h += `<div data-risk="${occ?inCell[0].id:''}" style="min-height:56px;border:1px solid ${occ?z.b:'#191d21'};background:${occ?z.s:z.f};border-radius:3px;display:flex;gap:4px;align-items:center;justify-content:center;flex-wrap:wrap;cursor:${occ?'pointer':'default'};">${chips}</div>`;
     });
   });
@@ -674,7 +720,7 @@ function docs(){
     <span style="font-size:12.5px;color:${C.text};">${esc(d.kind)}</span>
     <span class="mono-tag" style="justify-self:start;">${esc(d.id)}</span>
     <span style="font-size:12px;color:${d.status==='active'?C.amberT:C.muted};">${esc(d.status)}</span>
-    <span style="text-align:right;color:${d.passing?C.green:C.red};font-size:14px;">${d.passing?'✓':'✗'}</span></div>`).join('');
+    <span title="${d.passing?'passes every blocking structural check':'failing one or more blocking checks'}" style="cursor:help;text-align:right;color:${d.passing?C.green:C.red};font-size:14px;">${d.passing?'✓':'✗'}</span></div>`).join('');
 }
 
 function work(){
@@ -700,7 +746,7 @@ function work(){
     <div><div style="font-size:13px;color:${C.text};line-height:1.45;">${w.url?`<a style="text-decoration:none;" href="${esc(w.url)}">${esc(w.title)}</a>`:esc(w.title)}</div>
       <div style="font-size:10.5px;color:${C.dim};margin-top:6px;">linked ${esc(w.link)}</div></div>
     <span style="font-size:11.5px;color:${C.muted};">${esc(w.assignee)}</span>
-    <span style="text-align:right;font-size:11.5px;color:${stC(w.state)};">${w.state==='done'?'done ✓':esc(w.state)}</span></div>`).join('');
+    <span title="state read from the bridge-managed issue; presentation never alters the derived RAG" style="cursor:help;text-align:right;font-size:11.5px;color:${stC(w.state)};">${w.state==='done'?'done ✓':esc(w.state)}</span></div>`).join('');
 }
 
 function render(){ matrix(); riskCtl(); riskTable(); docs(); work(); }
@@ -722,12 +768,12 @@ def _index_row(p) -> str:
             f'<div><div style="font-family:Archivo,system-ui,sans-serif;font-weight:700;font-size:15px;color:#F1F3F5;line-height:1.2;">{esc(p["name"])}</div>'
             f'<div style="font-size:10.5px;color:{_C["dim"]};margin-top:5px;display:flex;gap:10px;">'
             f'<span>{esc(p["id"])}</span><span>·</span><span>{esc(p["sponsor"])}</span></div></div>'
-            f'<div style="text-align:center;"><div style="font-size:12.5px;color:{covc};">{cov}%</div>'
+            f'<div title="traceability links traced over required, all chains" style="cursor:help;text-align:center;"><div style="font-size:12.5px;color:{covc};">{cov}%</div>'
             f'<div style="height:4px;background:#16191c;margin-top:7px;border-radius:2px;overflow:hidden;">'
             f'<span style="display:block;height:100%;width:{cov}%;background:{covc};"></span></div></div>'
             f'<span style="text-align:center;font-size:12.5px;color:{_C["soft"]};">{esc(p["docs"])}</span>'
             f'<span style="text-align:center;font-size:12px;color:{_C["amberT"] if p["risks"] else _C["faint"]};">{risks}</span>'
-            f'<span style="text-align:right;font-size:11.5px;color:{_C["muted"]};">{esc(p["next"])}</span></a>')
+            f'<span title="nearest upcoming dated marker (milestone or operations review)" style="cursor:help;text-align:right;font-size:11.5px;color:{_C["muted"]};">{esc(p["next"])}</span></a>')
 
 
 def render_index_html(index) -> str:
