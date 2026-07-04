@@ -54,7 +54,13 @@ def _build_id_index(documents_dir: Path) -> dict[str, list[str]]:
 
 def _validate_one(path: str, id_index: dict) -> list[CheckResult]:
     doc = load(path)
-    kind = doc.kind or "charter"
+    kind = doc.kind or ""
+    if not kind:
+        # Refuse to guess: validating an unkinded document against an arbitrary
+        # kind's criteria would produce misleading failures (or worse, passes).
+        return [CheckResult("kind", False, True,
+                            "document declares no `kind` in its frontmatter",
+                            kind="structural")]
     criteria = config.read_criteria(kind)
     schema = config.read_schema(kind)
 
@@ -237,8 +243,14 @@ def cmd_pages(args: argparse.Namespace) -> int:
         import json as _json
         data = _json.loads(Path(args.execution).read_text())
         for proj in data.get("projects", []):
-            execution[proj["id"]] = {**proj, "scope": data.get("scope"),
-                                     "repo": proj.get("repo") or data.get("repo")}
+            repo = proj.get("repo") or data.get("repo")
+            # Scope findings belong to the repo a project routes to; showing
+            # another repo's strays on this project's page would misattribute.
+            scope = data.get("scope") or {}
+            scoped = {k: [i for i in scope.get(k, [])
+                          if not repo or i.get("repo") in (None, repo)]
+                      for k in ("unverified", "orphaned")}
+            execution[proj["id"]] = {**proj, "scope": scoped, "repo": repo}
 
     def _activity(project_id: str) -> list[dict]:
         """Recent documents/ commits for one project (best-effort, git only)."""
@@ -369,6 +381,10 @@ def cmd_bridge(args: argparse.Namespace) -> int:
                   "(needed for --project-number)", file=sys.stderr)
             return 2
         bgh = gh if isinstance(gh, ghmod.DryRunner) else ghmod.GhRunner(token=token)
+        if not args.project_owner and not repo_plans:
+            print("docassert bridge: --project-number needs --project-owner when "
+                  "no project routes to a repository", file=sys.stderr)
+            return 2
         owner = args.project_owner or next(iter(repo_plans)).split("/")[0]
         board_cfg = {"gh": bgh, "owner": owner,
                      "number": args.project_number, "init": args.init_board}

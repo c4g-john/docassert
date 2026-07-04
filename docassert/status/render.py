@@ -48,8 +48,10 @@ def render_markdown(model, summary: bool = False) -> str:
                    f"{comp['required_complete']}/{comp['required_total']} complete{detail}")
 
     if model["broken_references"]:
+        shown = ", ".join(model["broken_references"][:3])
+        more = "…" if len(model["broken_references"]) > 3 else ""
         out.append(f"- 🔴 **Broken references**: {len(model['broken_references'])} "
-                   f"({', '.join(model['broken_references'][:3])}…)")
+                   f"({shown}{more})")
     failing = [d["id"] for d in model["documents"] if not d["passing"]]
     if failing:
         out.append(f"- 🔴 **Documents failing audit**: {', '.join(failing)}")
@@ -142,8 +144,35 @@ def _today():
     return datetime.date.today()
 
 
+def _cap(s: str) -> str:
+    """Uppercase the first character only (str.capitalize lowercases the rest)."""
+    return s[:1].upper() + s[1:]
+
+
+def _amber_completeness_causes(comp) -> list[str]:
+    """The non-blocking profile gaps that amber the derived RAG."""
+    if not comp:
+        return []
+    if comp.get("unknown"):
+        return [f"profile '{comp['profile']}' not found under profiles/"]
+    causes = []
+    if comp["missing_required"]:
+        causes.append(f"{len(comp['missing_required'])} required document kind(s) "
+                      f"missing ({', '.join(comp['missing_required'])})")
+    if comp["incomplete_required"]:
+        causes.append(f"{len(comp['incomplete_required'])} required document kind(s) "
+                      f"not yet complete ({', '.join(comp['incomplete_required'])})")
+    if comp.get("recommended_gaps"):
+        causes.append(f"{len(comp['recommended_gaps'])} recommended document kind(s) open")
+    return causes
+
+
 def _verdict_causes(model) -> list[str]:
-    """The raw cause strings behind the verdict (also the verdict tooltip)."""
+    """The raw cause strings behind the verdict (also the verdict tooltip).
+
+    Mirrors derive_rag exactly: every condition that can amber or red the RAG
+    appears here, so an amber page can never claim it has no recorded causes.
+    """
     causes = []
     gaps = [c for c in model["coverage"] if c["gaps"]]
     if gaps:
@@ -156,6 +185,8 @@ def _verdict_causes(model) -> list[str]:
     comp = model.get("completeness")
     if comp and comp.get("blocks"):
         causes.append("required documents missing under an enforced profile")
+    else:
+        causes.extend(_amber_completeness_causes(comp))
     thr = model.get("risk_amber_score", 6)
     open_r = [r for r in model["risks"] if r.get("disposition", "open") == "open"
               and (thr == 0 or r.get("score", 0) >= thr)]
@@ -164,6 +195,9 @@ def _verdict_causes(model) -> list[str]:
     stale = [o for o in model.get("operations", []) if not o["fresh"]]
     if stale:
         causes.append(f"operations review overdue since {stale[0]['review_by']}")
+    reported = (model.get("latest_report") or {}).get("rag")
+    if reported in ("amber", "red"):
+        causes.append(f"latest status report recorded {reported}")
     return causes
 
 
@@ -176,35 +210,48 @@ def _verdict(model) -> str:
         causes_amber.append(f"{len(gaps)} coverage chain(s) carry gaps")
     else:
         goods.append("coverage is complete")
-    failing = [d for d in model["documents"] if not d["passing"]]
-    if failing:
-        causes_red.append(f"{len(failing)} document(s) fail audit")
+    failing_approved = [d for d in model["documents"]
+                        if not d["passing"] and d["status"] in ("approved", "baselined")]
+    failing_draft = [d for d in model["documents"]
+                     if not d["passing"] and d["status"] not in ("approved", "baselined")]
+    if failing_approved:
+        causes_red.append(f"{len(failing_approved)} approved document(s) fail audit")
     else:
-        goods.append("every document passes audit")
+        goods.append("every approved document passes audit")
     if model["broken_references"]:
         causes_red.append(f"{len(model['broken_references'])} reference(s) are broken")
     comp = model.get("completeness")
     if comp and comp.get("blocks"):
         causes_red.append("required documents are missing under an enforced profile")
-    open_r = [r for r in model["risks"] if r.get("disposition", "open") == "open"]
-    hi = [r for r in open_r if r.get("impact") in ("high", "critical")]
-    if open_r:
-        clause = f"{len(open_r)} risk(s) stay open"
+    else:
+        causes_amber.extend(_amber_completeness_causes(comp))
+    thr = model.get("risk_amber_score", 6)
+    open_thr = [r for r in model["risks"] if r.get("disposition", "open") == "open"
+                and (thr == 0 or r.get("score", 0) >= thr)]
+    hi = [r for r in open_thr if r.get("impact") in ("high", "critical")]
+    if open_thr:
+        clause = f"{len(open_thr)} risk(s) at or above the appetite stay open"
         if hi:
             clause += f", {len(hi)} of them high-impact"
         causes_amber.append(clause)
     stale = [o for o in model.get("operations", []) if not o["fresh"]]
     if stale:
         causes_amber.append(f"the operations review is overdue since {stale[0]['review_by']}")
+    reported = (model.get("latest_report") or {}).get("rag")
+    if reported in ("amber", "red"):
+        causes_amber.append(f"the latest status report recorded {reported}")
+    draft_note = (f" ({len(failing_draft)} draft document(s) still failing checks — "
+                  "work in progress, never punished)" if failing_draft else "")
     if rag == "green":
-        return ("Coverage is complete, every document passes audit, and no open risk "
-                "or overdue review stands against this project. Green is earned, not assumed.")
+        return ("Coverage is complete, every approved document passes audit, and no "
+                "open risk or overdue review stands against this project"
+                + draft_note + ". Green is earned, not assumed.")
     if rag == "red":
-        return (" and ".join(causes_red).capitalize()
+        return (_cap(" and ".join(causes_red))
                 + " — red means something is objectively broken, and the gates say what.")
-    lead = " and ".join(goods[:2]).capitalize() if goods else "The structure holds"
+    lead = _cap(" and ".join(goods[:2])) if goods else "The structure holds"
     tail = "; ".join(causes_amber) if causes_amber else "signals carry residual risk"
-    return f"{lead} — but {tail}. Amber is a recorded state, not neglect."
+    return f"{lead} — but {tail}{draft_note}. Amber is a recorded state, not neglect."
 
 
 def _days_label(days: int) -> str:
@@ -215,18 +262,25 @@ def _days_label(days: int) -> str:
     return f"IN {days} DAYS"
 
 
+def _days_until(date_str) -> int | None:
+    """Days from today to an ISO date string, or None when it isn't one.
+    Every date that reaches the renderer goes through this: derive tolerates
+    malformed frontmatter (e.g. review_by '2026-13-45'), so rendering must too."""
+    import datetime
+    try:
+        return (datetime.date.fromisoformat(str(date_str)) - _today()).days
+    except (TypeError, ValueError):
+        return None
+
+
 def _next_marker(model):
     """Nearest upcoming dated marker: milestone or operations review."""
     cands = [(m["days"], m["label"], m["date"]) for m in model.get("milestones", [])
              if m["days"] >= 0]
     for o in model.get("operations", []):
-        try:
-            import datetime
-            d = (datetime.date.fromisoformat(o["review_by"]) - _today()).days
-            if d >= 0:
-                cands.append((d, "Operations review", o["review_by"]))
-        except ValueError:
-            pass
+        d = _days_until(o["review_by"])
+        if d is not None and d >= 0:
+            cands.append((d, "Operations review", o["review_by"]))
     return min(cands) if cands else None
 
 
@@ -237,18 +291,18 @@ def _pct(d, w0, span):
 
 
 def _json_embed(data) -> str:
-    return json.dumps(data).replace("</", "<\\\\/")
+    """JSON for an inline <script>, with `</` split so the parser can never
+    see `</script>`. JSON reads `\\/` as `/`, so the payload is lossless."""
+    return json.dumps(data).replace("</", "<\\/")
 
 
 def render_html(model) -> str:
-    import datetime
     rag = model["rag"]
     c = model["counts"]
     rc, rt = _RAGC[rag], _RAGT[rag]
     title = esc(model.get("title", "Project Status"))
     pid = model.get("project") or ""
     gen = _now_utc()
-    today = _today()
 
     passing = sum(1 for d in model["documents"] if d["passing"])
     open_r = [r for r in model["risks"] if r.get("disposition", "open") == "open"]
@@ -281,11 +335,11 @@ def render_html(model) -> str:
         ("OPEN RISKS", str(len(open_r)), _C["amberT"] if open_r else _C["green"],
          f"{disp_r} dispositioned" if disp_r else "0 dispositioned"),
         ("NEXT MILESTONE", (f"{nxt[0]}d" if nxt else "—"), _C["text"],
-         (f"{esc(nxt[1])} · {nxt[2]}" if nxt else "no dated milestone")),
+         (f"{nxt[1]} · {nxt[2]}" if nxt else "no dated milestone")),
         ("DOC SET", docset_v, docset_c, docset_sub),
     ]
     stat_tips = {
-        "HEALTH": "Derived RAG. Red: failing approved docs, broken references, or enforced profile gaps. Amber: coverage gaps, open risks at or above the risk appetite, stale operations review, or an amber/red status report. Green: none of those.",
+        "HEALTH": "Derived RAG. Red: failing approved docs, broken references, or enforced profile gaps. Amber: coverage gaps, open risks at or above the risk appetite, stale operations review, an amber/red status report, or profile completeness gaps (required kinds missing/incomplete, recommended kinds open, unknown profile). Green: none of those.",
         "DOCS APPROVED": "Documents with approved or baselined status, of all documents in this project. The sub-line counts documents passing every blocking structural check.",
         "COVERAGE": "Traceability links present over links required, across every configured chain (BR→PR, PR→AC, AC→TC, and any others).",
         "OPEN RISKS": "Risks with disposition open. Dispositioned risks (mitigated, accepted, closed) stay on the register as record but do not count here.",
@@ -297,7 +351,7 @@ def render_html(model) -> str:
         f'<div class="chiplabel" style="margin-bottom:14px;">{k}</div>'
         f'<div style="font-family:Archivo,system-ui,sans-serif;font-weight:800;font-size:30px;letter-spacing:-.02em;'
         f'line-height:1;color:{col};font-variant-numeric:tabular-nums;">{esc(v)}</div>'
-        f'<div style="font-size:11px;color:{_C["muted"]};margin-top:9px;line-height:1.4;">{sub}</div></div>'
+        f'<div style="font-size:11px;color:{_C["muted"]};margin-top:9px;line-height:1.4;">{esc(sub)}</div></div>'
         for k, v, col, sub in stats)
 
     # ── 01 coverage meters + doc set ────────────────────────────────────────
@@ -358,8 +412,7 @@ def render_html(model) -> str:
     ms = list(model.get("milestones", []))
     for o in model.get("operations", []):
         ms.append({"label": "Operations review", "date": o["review_by"],
-                   "days": (datetime.date.fromisoformat(o["review_by"]) - today).days
-                   if len(o["review_by"]) == 10 else 0,
+                   "days": _days_until(o["review_by"]) or 0,
                    "when": "upcoming" if o["fresh"] else "elapsed"})
     ms.sort(key=lambda m: m["date"])
     timeline_html = ""
@@ -674,7 +727,7 @@ function riskCtl(){
   el.innerHTML = '<span class="chiplabel" style="margin-right:2px;">SORT</span>';
   el.appendChild(btn('severity', S.sort==='severity', ()=>{S.sort='severity';render();}));
   el.appendChild(btn('id', S.sort==='id', ()=>{S.sort='id';render();}));
-  if(S.sel){ el.appendChild(btn('isolating '+S.sel.split('RISK-')[1]+' ×', true, ()=>{S.sel=null;render();})); }
+  if(S.sel){ el.appendChild(btn('isolating '+(S.sel.split('RISK-')[1]||S.sel)+' ×', true, ()=>{S.sel=null;render();})); }
 }
 
 function riskTable(){

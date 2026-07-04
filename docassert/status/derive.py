@@ -234,16 +234,25 @@ def _latest_report(docs):
 
 
 # ── the model + derived RAG ─────────────────────────────────────────────────
-def build_status(documents_dir=DOCUMENTS_DIR, project: str | None = None) -> dict:
+def load_corpus(documents_dir=DOCUMENTS_DIR) -> tuple[list, object, dict]:
+    """(all documents, item graph, consistency config) for one tree — loaded
+    once and shared across the per-project derivations of an index or pages
+    build via build_status(..., _corpus=...)."""
+    all_docs = [load(p) for p in sorted(Path(documents_dir).rglob("*.md"))]
+    graph = build_graph(documents_dir)
+    cfg = config_mod.read_consistency_config()
+    return all_docs, graph, cfg
+
+
+def build_status(documents_dir=DOCUMENTS_DIR, project: str | None = None,
+                 *, _corpus=None) -> dict:
     """Derive the status model for the whole repo, or for one project.
 
     `project` is a canonical project id (PRJ-NNN-CODE). When given, documents,
     coverage, risks, broken references and the latest report are all scoped to
     that project; the graph stays global so cross-project targets still resolve.
     """
-    all_docs = [load(p) for p in sorted(Path(documents_dir).rglob("*.md"))]
-    graph = build_graph(documents_dir)
-    cfg = config_mod.read_consistency_config()
+    all_docs, graph, cfg = _corpus if _corpus else load_corpus(documents_dir)
 
     code = project.split("-")[-1] if project else None
     if project:
@@ -314,9 +323,11 @@ def completeness_report(documents_dir=DOCUMENTS_DIR) -> list[dict]:
     """Per-project completeness for every profiled project (used by the
     blocking profile-completeness consistency check)."""
     from .. import projects as projects_mod
+    corpus = load_corpus(documents_dir)
     out = []
     for p in projects_mod.load_projects(documents_dir):
-        comp = build_status(documents_dir, project=p["id"]).get("completeness")
+        comp = build_status(documents_dir, project=p["id"],
+                            _corpus=corpus).get("completeness")
         if comp:
             out.append({"id": p["id"], "name": p["name"], "lifecycle": p["status"], **comp})
     return out
@@ -339,9 +350,10 @@ def build_index(documents_dir=DOCUMENTS_DIR) -> dict:
     """The multi-project view: each project's derived RAG + headline signals,
     plus the whole-repo rollup."""
     from .. import projects as projects_mod
+    corpus = load_corpus(documents_dir)
     cards = []
     for p in projects_mod.load_projects(documents_dir):
-        m = build_status(documents_dir, project=p["id"])
+        m = build_status(documents_dir, project=p["id"], _corpus=corpus)
         cards.append({
             "id": p["id"], "code": p["code"], "name": p["name"],
             "sponsor": p["sponsor"], "lifecycle": p["status"],
@@ -357,7 +369,8 @@ def build_index(documents_dir=DOCUMENTS_DIR) -> dict:
             "broken": len(m["broken_references"]),
             "completeness": m.get("completeness"),
         })
-    return {"projects": cards, "overall": build_status(documents_dir)}
+    return {"projects": cards,
+            "overall": build_status(documents_dir, _corpus=corpus)}
 
 
 def derive_rag(model) -> str:

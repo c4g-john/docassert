@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 import shutil
+from functools import lru_cache
 from importlib.resources import files
 from pathlib import Path
 
@@ -30,8 +31,22 @@ def _resolve(local: Path, packaged_rel: str) -> Path | None:
     return packaged if packaged.is_file() else None
 
 
+# Criteria and schemas are read once per check per document, which multiplies
+# fast on a portfolio (projects × documents × checks). Cache on (path, mtime)
+# so an edit mid-process still invalidates. Cached objects are shared: callers
+# treat them as read-only.
+@lru_cache(maxsize=256)
+def _read_yaml_cached(path_str: str, mtime_ns: int) -> dict:
+    return yaml.safe_load(Path(path_str).read_text(encoding="utf-8")) or {}
+
+
+@lru_cache(maxsize=256)
+def _read_json_cached(path_str: str, mtime_ns: int) -> dict:
+    return json.loads(Path(path_str).read_text(encoding="utf-8"))
+
+
 def _read_yaml(path: Path) -> dict:
-    return yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    return _read_yaml_cached(str(path), path.stat().st_mtime_ns)
 
 
 # ── criteria ────────────────────────────────────────────────────────────────
@@ -57,7 +72,7 @@ def read_schema(kind: str) -> dict:
     path = _resolve(Path("schema") / f"{kind}.schema.json", f"schema/{kind}.schema.json")
     if path is None:
         raise FileNotFoundError(f"no schema for kind '{kind}'")
-    return json.loads(path.read_text(encoding="utf-8"))
+    return _read_json_cached(str(path), path.stat().st_mtime_ns)
 
 
 # ── consistency config ──────────────────────────────────────────────────────

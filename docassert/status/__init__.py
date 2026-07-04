@@ -8,6 +8,7 @@ from .derive import (
     build_status,
     completeness_report,
     derive_rag,
+    load_corpus,
 )
 from .render import (
     render_badge_json,
@@ -20,7 +21,7 @@ from .render import (
 
 __all__ = [
     "DOCUMENTS_DIR", "APPROVED",
-    "build_status", "build_index", "completeness_report", "derive_rag",
+    "build_status", "build_index", "completeness_report", "derive_rag", "load_corpus",
     "render_markdown", "render_json", "render_html",
     "render_index_markdown", "render_index_html", "render_badge_json",
 ]

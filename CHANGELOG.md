@@ -3,6 +3,52 @@
 All notable changes to docassert. Format follows [Keep a Changelog](https://keepachangelog.com/);
 versions follow [SemVer](https://semver.org/).
 
+## [0.20.2] — 2026-07-04
+
+Defect-fix release from a full code/content/automation audit. No CLI surface
+changes.
+
+### Fixed
+- **Bridge: a converged (closed) duplicate issue could shadow the real open
+  issue.** The GitHub API lists issues newest-first while the marker index
+  assumed oldest-first, so `bridge status` reported features and stories as
+  done when their real issues were open, `bridge scaffold` updated the wrong
+  issue, and `bridge reconcile` refreshed a closed scope report. The index now
+  ranks open before closed, then lowest number.
+- `status --format html` crashed on an operations `review_by` that was
+  malformed but 10 characters long (e.g. `2026-13-45`); all renderer date
+  math now tolerates what derive tolerates.
+- The verdict tooltip could read "No amber or red causes recorded." on an
+  amber page: an amber/red latest status report and profile completeness gaps
+  (required kinds missing or incomplete, recommended kinds open, unknown
+  profile) were derived into the RAG but missing from the cause list. The
+  verdict sentence and the HEALTH stat tooltip now state every cause
+  `derive_rag` uses.
+- The green verdict claimed "every document passes audit" even when a draft
+  document was failing checks; it now says "every approved document passes
+  audit" and names failing drafts as work in progress.
+- The amber verdict counted every open risk while the tooltip counted only
+  risks at or above the appetite; both now respect the appetite threshold.
+- Inline dashboard JSON over-escaped `</` (rendering a stray backslash in any
+  text containing it); the payload now round-trips losslessly.
+- `validate` silently validated documents with no `kind` as charters; a
+  missing kind is now a blocking failure that says so.
+- Project pages showed scope findings (unverified/orphaned issues) from other
+  projects' repositories; the scope panel is now filtered to the repo the
+  project routes to.
+- `bridge --project-number` without `--project-owner` crashed when no project
+  routed to a repository; it now exits with a clear message.
+- `plans_by_repo` shared one skipped list across sub-plans.
+- Projects v2 board lookups only resolved user owners; organization-owned
+  boards now work (user first, then organization).
+- `sequence-acyclic` is now an iterative DFS, so a dependency chain as long
+  as the item count cannot hit the recursion limit.
+
+### Changed
+- Criteria/schema/consistency reads are cached on (path, mtime); index and
+  pages builds load the document corpus once instead of once per project.
+- CI tests Python 3.14; classifiers updated.
+
 ## [0.20.1] — 2026-07-05
 
 ### Added

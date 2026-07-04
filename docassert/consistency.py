@@ -3,10 +3,13 @@
 Structural checks are deterministic and blocking:
   - item-id-uniqueness   : IDs unique across the repo (always blocks)
   - referential-integrity: every link target exists (always blocks)
+  - sequence-acyclic     : the `after` digraph has no cycle (always blocks)
   - required-links       : downstream items declare their upstream link
                            (blocks only when the item's doc is approved)
   - coverage             : every parent item has >=1 downstream child
                            (blocks only when the parent's doc is approved)
+  - profile-completeness : enforced projects carry their profile's required
+                           documents (blocks when enforced or profile unknown)
 
 Semantic alignment is AI-graded and advisory (never blocks).
 """
@@ -50,31 +53,40 @@ def check_unique_item_ids(graph) -> CheckResult:
 
 
 def check_sequence_acyclic(graph) -> CheckResult:
-    """The `after` digraph contains no cycle (a cycle is broken sequencing)."""
+    """The `after` digraph contains no cycle (a cycle is broken sequencing).
+
+    Iterative three-color DFS: a dependency chain as long as the item count
+    must not hit the interpreter recursion limit.
+    """
     edges: dict[str, list[str]] = {}
     for item in graph.all_items():
         for target in item.links.get("after", []):
             edges.setdefault(item.id, []).append(target)
-    state: dict[str, int] = {}  # 0 visiting, 1 done
-
-    def visit(node, path):
-        if state.get(node) == 1:
-            return None
-        if state.get(node) == 0:
-            return path[path.index(node):] + [node]
-        state[node] = 0
-        for nxt in edges.get(node, []):
-            cycle = visit(nxt, path + [node])
-            if cycle:
-                return cycle
-        state[node] = 1
-        return None
-
+    WHITE, GRAY, BLACK = 0, 1, 2
+    color: dict[str, int] = {}
     for start in list(edges):
-        cycle = visit(start, [])
-        if cycle:
-            return CheckResult("sequence-acyclic", False, True,
-                               "after-cycle: " + " → ".join(cycle))
+        if color.get(start, WHITE) != WHITE:
+            continue
+        color[start] = GRAY
+        path = [start]
+        stack = [iter(edges.get(start, ()))]
+        while stack:
+            advanced = False
+            for nxt in stack[-1]:
+                c = color.get(nxt, WHITE)
+                if c == GRAY:
+                    cycle = path[path.index(nxt):] + [nxt]
+                    return CheckResult("sequence-acyclic", False, True,
+                                       "after-cycle: " + " → ".join(cycle))
+                if c == WHITE:
+                    color[nxt] = GRAY
+                    path.append(nxt)
+                    stack.append(iter(edges.get(nxt, ())))
+                    advanced = True
+                    break
+            if not advanced:
+                color[path.pop()] = BLACK
+                stack.pop()
     n = sum(len(v) for v in edges.values())
     return CheckResult("sequence-acyclic", True, True,
                        f"{n} after link(s), no cycles.")
