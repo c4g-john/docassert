@@ -441,3 +441,32 @@ def test_anchor_without_repo_keeps_single_repo_mode_working(tmp_path):
     gh = FakeGh()
     ops.scaffold(plan, gh, "o/r", docs_url=None)
     assert any("issues" in " ".join(c) for c in gh.calls)
+
+
+# ── concurrency safety (ENG-PR-006) ──────────────────────────────────────────
+def test_scaffold_converges_racing_duplicates(tmp_path):
+    plan = build_bridge_plan(_tree(tmp_path))
+    fid = plan.features[0].id
+    dupes = [_mk_issue(5, fid), _mk_issue(9, fid)]
+    gh = FakeGh(issues=dupes)
+    actions = ops.scaffold(plan, gh, "o/r", docs_url=None)
+    assert any("converged duplicate #9" in a for a in actions)
+    patches = [c for c in gh.calls if "repos/o/r/issues/9" in " ".join(c)
+               and "state=closed" in " ".join(c)]
+    assert patches, "the higher-numbered duplicate is closed"
+
+
+def test_ensure_fields_tolerates_existing_field():
+    gh = BoardGh()
+    original = gh.graphql
+
+    def racing(query, **kw):
+        if "createProjectV2Field" in query:
+            from docassert.bridge.gh import GhError
+            raise GhError('[{"message": "Name has already been taken"}]')
+        return original(query, **kw)
+
+    gh.graphql = racing
+    from docassert.bridge import board
+    project = board.ensure_fields(gh, "o", 1)   # must not raise
+    assert project["id"]

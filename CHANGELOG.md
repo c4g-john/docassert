@@ -3,6 +3,14 @@
 All notable changes to docassert. Format follows [Keep a Changelog](https://keepachangelog.com/);
 versions follow [SemVer](https://semver.org/).
 
+## [0.14.1] — 2026-07-04
+
+### Fixed
+- Bridge concurrency safety (both found live on the PMO as Code portfolio's
+  launch day): scaffolding now converges on one open issue per marker,
+  closing racing duplicates in favor of the lowest number, and board field
+  initialization treats an already-existing field as success.
+
 ## [0.14.0] — 2026-07-03
 
 ### Added
