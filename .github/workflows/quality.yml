@@ -53,3 +53,20 @@ jobs:
     needs: [test, windows]   # conformance gates separately (own workflow)
     steps:
       - run: echo "all legs passed"
+
+  stability-surface:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: "3.12"
+      - run: pip install -e .
+      - name: STABILITY.md CLI reference matches the live parser
+        run: |
+          python scripts/dump_cli_surface.py > /tmp/surface.md
+          awk '/^### `docassert /,0' STABILITY.md > /tmp/documented.md
+          if ! diff -u /tmp/documented.md /tmp/surface.md; then
+            echo "::error::STABILITY.md CLI reference drifted — regenerate: python scripts/dump_cli_surface.py"
+            exit 1
+          fi
