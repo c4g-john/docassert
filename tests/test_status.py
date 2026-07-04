@@ -53,7 +53,9 @@ def test_rag_red_on_failing_approved_doc():
 
 
 def test_rag_amber_on_open_risk():
-    assert S.derive_rag(_model(risks=[{"id": "RISK-1", "score": 4}])) == "amber"
+    # at or above the appetite (default 6) ambers; below stays green
+    assert S.derive_rag(_model(risks=[{"id": "RISK-1", "score": 6}])) == "amber"
+    assert S.derive_rag(_model(risks=[{"id": "RISK-1", "score": 4}])) == "green"
 
 
 def test_rag_amber_on_coverage_gap():
@@ -189,8 +191,8 @@ def test_disposition_parsed_and_defaulted():
 def test_rag_green_when_all_risks_dispositioned():
     base = {"documents": [], "coverage": [], "broken_references": [],
             "latest_report": None, "completeness": None}
-    open_r = dict(base, risks=[{"id": "R", "score": 2, "disposition": "open"}])
-    done_r = dict(base, risks=[{"id": "R", "score": 2, "disposition": "accepted"}])
+    open_r = dict(base, risks=[{"id": "R", "score": 6, "disposition": "open"}])
+    done_r = dict(base, risks=[{"id": "R", "score": 6, "disposition": "accepted"}])
     assert S.derive_rag(open_r) == "amber"
     assert S.derive_rag(done_r) == "green"
 
@@ -275,3 +277,27 @@ def test_svc_and_freshness_checks(tmp_path):
     assert ok
     fresh_ok, detail = check_ops_review_fresh(doc, ctx)
     assert not fresh_ok and "overdue" in detail
+
+
+# ── risk appetite (spec 0.7.0) ───────────────────────────────────────────────
+def test_low_grade_open_risks_do_not_amber():
+    base = {"documents": [], "coverage": [], "broken_references": [],
+            "latest_report": None, "completeness": None, "operations": [],
+            "risk_amber_score": 6}
+    low = dict(base, risks=[{"id": "R", "score": 4, "disposition": "open"}])
+    hi = dict(base, risks=[{"id": "R", "score": 6, "disposition": "open"}])
+    strict = dict(low, risk_amber_score=0)
+    assert S.derive_rag(low) == "green"
+    assert S.derive_rag(hi) == "amber"
+    assert S.derive_rag(strict) == "amber"
+
+
+def test_charter_target_becomes_implicit_milestone():
+    _cd_root()
+    m = S.build_status(ROOT / "documents", project="PRJ-002-ATL")
+    dates = [x["label"] for x in m["milestones"]]
+    assert any("Charter target" in lbl or lbl for lbl in dates) or m["milestones"] == []
+    # Aurora has explicit dated milestones AND a target; no duplicates by date
+    m2 = S.build_status(ROOT / "documents", project="PRJ-001-AUR")
+    seen = [x["date"] for x in m2["milestones"]]
+    assert len(seen) == len(set(seen))

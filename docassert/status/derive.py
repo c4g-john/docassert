@@ -135,13 +135,27 @@ def _milestones(docs):
                 due = datetime.date.fromisoformat(m.group("date"))
             except ValueError:
                 continue
-            delta = (due - today).days
-            out.append({"label": m.group("label").strip(),
-                        "date": due.isoformat(),
-                        "days": delta,
-                        "when": ("today" if delta == 0 else
-                                 "elapsed" if delta < 0 else "upcoming")})
+            out.append(_ms_entry(m.group("label").strip(), due, today))
+    for d in docs:
+        if d.kind != "charter":
+            continue
+        target = (d.frontmatter.get("dates") or {}).get("target")
+        if target:
+            try:
+                due = (target if isinstance(target, datetime.date)
+                       else datetime.date.fromisoformat(str(target)))
+                if not any(x["date"] == due.isoformat() for x in out):
+                    out.append(_ms_entry("Charter target", due, today))
+            except (TypeError, ValueError):
+                pass
     return sorted(out, key=lambda x: x["date"])
+
+
+def _ms_entry(label, due, today):
+    delta = (due - today).days
+    return {"label": label, "date": due.isoformat(), "days": delta,
+            "when": ("today" if delta == 0 else
+                     "elapsed" if delta < 0 else "upcoming")}
 
 
 def _operations(docs):
@@ -234,6 +248,7 @@ def build_status(documents_dir=DOCUMENTS_DIR, project: str | None = None) -> dic
         "broken_references": _broken_references(graph, code),
         "latest_report": _latest_report(docs),
         "completeness": completeness,
+        "risk_amber_score": int(cfg.get("risk_amber_score", 6) or 0),
     }
     model["rag"] = derive_rag(model)
     return model
@@ -313,7 +328,10 @@ def derive_rag(model) -> str:
     reported = (model["latest_report"] or {}).get("rag")
     completeness_gap = bool(comp and (comp["missing_required"] or comp["incomplete_required"]
                                       or comp["recommended_gaps"] or comp.get("unknown")))
-    open_risks = [r for r in model["risks"] if r.get("disposition", "open") == "open"]
+    threshold = model.get("risk_amber_score", 6)
+    open_risks = [r for r in model["risks"]
+                  if r.get("disposition", "open") == "open"
+                  and (threshold == 0 or r.get("score", 0) >= threshold)]
     stale_ops = [o for o in model.get("operations", []) if not o["fresh"]]
     if (coverage_gap or open_risks or stale_ops
             or reported in {"amber", "red"} or completeness_gap):
