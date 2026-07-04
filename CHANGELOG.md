@@ -3,6 +3,18 @@
 All notable changes to docassert. Format follows [Keep a Changelog](https://keepachangelog.com/);
 versions follow [SemVer](https://semver.org/).
 
+## [1.0.0] — 2026-07-04
+
+The stability release. Functionally identical to 0.20.2 — the number is the
+promise: the guarantees in [STABILITY.md](STABILITY.md) (CLI surface,
+machine-readable output shapes, exit-code semantics, packaged-data semantics,
+and the spec-first relationship) are now in force. Implements PMO as Code
+spec v0.8.0; the 73-case conformance suite runs in CI at that tag.
+
+### Changed
+- Version 1.0.0; classifier Development Status :: 5 — Production/Stable.
+- No functional changes from 0.20.2.
+
 ## [0.20.2] — 2026-07-04
 
 Defect-fix release from a full code/content/automation audit. No CLI surface
