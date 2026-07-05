@@ -3,6 +3,19 @@
 All notable changes to docassert. Format follows [Keep a Changelog](https://keepachangelog.com/);
 versions follow [SemVer](https://semver.org/).
 
+## [1.0.1] — 2026-07-05
+
+Implements spec v0.8.1.
+
+### Added
+- **`scope:exempt` label** (spec v0.8.1): tracker items carrying it are
+  excluded from bridge scope classification entirely — not matched,
+  unverified, or orphaned, and never part of the reconciliation exit code.
+  For operational automation (monitoring alarms, dependency bots) that must
+  open issues in a governed repository. The bridge never applies the label
+  itself. Found live: the CI-health sentinel's own issue and the scope guard
+  deadlocked, each keeping the other red overnight.
+
 ## [1.0.0] — 2026-07-04
 
 The stability release. Functionally identical to 0.20.2 — the number is the

@@ -23,6 +23,10 @@ from .plan import (
 
 MARKER_RE = re.compile(r"<!-- docassert-bridge: ([A-Za-z0-9-]+) -->")
 SCOPE_REPORT_KEY = "scope-report"
+# Spec v0.8.1: items carrying this label are excluded from scope
+# classification entirely. The label is a human decision; the bridge never
+# applies it (it only creates its own bridge:*/scope:* labels below).
+EXEMPT_LABEL = "scope:exempt"
 LABELS = {
     "bridge:feature": ("1d76db", "Feature scaffolded from a product requirement"),
     "bridge:story": ("0e8a16", "Story scaffolded from an approved user story"),
@@ -162,6 +166,8 @@ def reconcile(plan: BridgePlan, gh: G.GhRunner, repo: str) -> tuple[list[str], i
         if key == SCOPE_REPORT_KEY:
             continue
         labels = {lb["name"] for lb in issue.get("labels", [])}
+        if EXEMPT_LABEL in labels:
+            continue
         number = issue["number"]
 
         if key is None:
@@ -220,6 +226,8 @@ def status(plan: BridgePlan, gh: G.GhRunner, repo: str) -> dict:
             continue
         key = _marker_of(issue)
         if key == SCOPE_REPORT_KEY:
+            continue
+        if EXEMPT_LABEL in {lb.get("name") for lb in issue.get("labels") or []}:
             continue
         if key is None:
             unverified.append({"number": issue["number"], "title": issue["title"]})
