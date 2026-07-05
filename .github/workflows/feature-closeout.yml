@@ -1,9 +1,17 @@
 name: feature close-out
 
 # When a Story closes, close its parent Feature once every sibling is closed.
+#
+# Level-triggered: each run reconciles EVERY open parent, not just the event's
+# parent. Simultaneous close events share one concurrency slot and GitHub
+# keeps only one queued run (observed 2026-07-05: one squash-merge closed four
+# stories, two of the four runs were cancelled, and two features stayed open),
+# so any surviving run must be able to do the whole job. Passes repeat so a
+# closed feature can close its own parent in the same run.
 on:
   issues:
     types: [closed]
+  workflow_dispatch:
 
 concurrency:
   group: feature-closeout
@@ -17,29 +25,34 @@ jobs:
     if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
-      - name: Close the parent when all sub-issues are closed
+      - name: Close every open parent whose sub-issues are all closed
         env:
           GH_TOKEN: ${{ github.token }}
-          ISSUE_NODE: ${{ github.event.issue.node_id }}
           QUERY: |
-            query($id: ID!) {
-              node(id: $id) {
-                ... on Issue {
-                  parent { id number state
-                    subIssues(first: 100) { nodes { state } } }
+            query($owner: String!, $repo: String!) {
+              repository(owner: $owner, name: $repo) {
+                issues(states: OPEN, first: 100) {
+                  nodes {
+                    number
+                    subIssues(first: 100) { totalCount nodes { state } }
+                  }
                 }
               }
             }
         run: |
-          parent=$(gh api graphql -f query="$QUERY" -f id="$ISSUE_NODE" \
-            -q '.data.node.parent // empty')
-          [ -z "$parent" ] && echo "no parent; nothing to do" && exit 0
-          number=$(echo "$parent" | jq -r '.number')
-          state=$(echo "$parent" | jq -r '.state')
-          open=$(echo "$parent" | jq -r '[.subIssues.nodes[] | select(.state != "CLOSED")] | length')
-          if [ "$state" != "CLOSED" ] && [ "$open" = "0" ]; then
-            gh issue close "$number" --repo "$GITHUB_REPOSITORY" \
-              --comment "All stories under this feature are closed; closing per the bridge."
-          else
-            echo "parent #$number has $open open story(ies)"
-          fi
+          for pass in 1 2 3; do
+            parents=$(gh api graphql -f query="$QUERY" \
+              -f owner="${GITHUB_REPOSITORY%/*}" -f repo="${GITHUB_REPOSITORY#*/}" \
+              -q '.data.repository.issues.nodes[]
+                  | select(.subIssues.totalCount > 0)
+                  | select([.subIssues.nodes[] | select(.state != "CLOSED")] | length == 0)
+                  | .number')
+            if [ -z "$parents" ]; then
+              echo "pass $pass: nothing left to close"
+              exit 0
+            fi
+            for number in $parents; do
+              gh issue close "$number" --repo "$GITHUB_REPOSITORY" \
+                --comment "All stories under this feature are closed; closing per the bridge."
+            done
+          done
