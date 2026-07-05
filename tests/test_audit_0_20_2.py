@@ -216,3 +216,46 @@ def test_board_get_project_falls_back_to_organization():
     project = board.get_project(OrgOnlyGh(), "acme", 3)
     assert project["id"] == "P1"
     assert project["fields"]["Type"]["options"]["Feature"] == "O1"
+
+
+# ── spec v0.8.1: scope:exempt items are invisible to the scope guard ─────────
+def test_scope_exempt_label_excluded_from_classification():
+    from docassert.bridge.plan import BridgePlan
+    exempt = {"number": 90, "state": "open", "title": "CI health: failures detected",
+              "body": "no marker here", "labels": [{"name": "scope:exempt"}]}
+    stray = {"number": 91, "state": "open", "title": "Add dark mode",
+             "body": "no marker here", "labels": []}
+    plan = BridgePlan(projects=[{"id": "P", "code": "P", "repo": "o/r", "features": []}])
+
+    class ReadOnlyGh:
+        def run(self, args, input_=None):
+            import json
+            if "issues?" in args[1]:
+                return json.dumps([exempt, stray])
+            return "{}"
+
+    data = ops.status(plan, ReadOnlyGh(), "o/r")
+    nums = [i["number"] for i in data["scope"]["unverified"]]
+    assert nums == [91], f"exempt issue leaked into scope: {nums}"
+
+    lines, code = ops.reconcile(plan, ReadOnlyGh(), "o/r")
+    assert code == 1                      # the real stray still alarms
+    assert not any("#90" in ln for ln in lines)
+    assert any("#91" in ln for ln in lines)
+
+
+def test_scope_exempt_alone_exits_zero():
+    from docassert.bridge.plan import BridgePlan
+    exempt = {"number": 90, "state": "open", "title": "CI health: failures detected",
+              "body": "no marker here", "labels": [{"name": "scope:exempt"}]}
+    plan = BridgePlan(projects=[{"id": "P", "code": "P", "repo": "o/r", "features": []}])
+
+    class ReadOnlyGh:
+        def run(self, args, input_=None):
+            import json
+            if "issues?" in args[1]:
+                return json.dumps([exempt])
+            return "{}"
+
+    lines, code = ops.reconcile(plan, ReadOnlyGh(), "o/r")
+    assert code == 0, f"exempt-only board must not alarm: {lines}"
