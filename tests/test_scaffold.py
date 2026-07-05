@@ -145,3 +145,16 @@ def test_cli_new_creates_and_hints(tmp_path, monkeypatch, capsys):
     assert main(["new", "brd", "--project", "PRJ-001-AAA"]) == 0
     out = capsys.readouterr().out
     assert "created" in out and "AAA-BR-001" in out
+
+
+# ── the adopter path: fresh scaffolds must pass validation ───────────────────
+def test_fresh_scaffold_passes_validate(tmp_path, monkeypatch):
+    """The template README's first commands: new project, new charter,
+    validate. A fresh scaffold failing its own structural gate was a real
+    day-one failure (found 2026-07-05 exercising the adopter path); every
+    packaged template's required sections must survive comment-stripping."""
+    monkeypatch.chdir(tmp_path)
+    assert main(["new", "project", "--code", "AUR", "--name", "Aurora"]) == 0
+    assert main(["new", "charter", "--project", "PRJ-001-AUR"]) == 0
+    docs = sorted(str(p) for p in (tmp_path / "documents").rglob("*.md"))
+    assert main(["validate", *docs]) == 0
