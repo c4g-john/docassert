@@ -42,6 +42,11 @@ Bump `docassert/__init__.py:__version__`, move the CHANGELOG entries under the
 new version, merge, then publish a GitHub Release tagged `vX.Y.Z` — the
 `release` workflow builds and uploads to PyPI via Trusted Publishing.
 
+Every release also gets a news entry on the site: add a dated Markdown file
+to `src/content/news/` in [c4g-john/pmo-as-code](https://github.com/c4g-john/pmo-as-code)
+stating what shipped, with the artifacts linked. The /news/ page and the
+RSS feed at pmoascode.com/rss.xml generate from it.
+
 ## License
 
 Contributions are accepted under Apache-2.0 (see LICENSE/NOTICE).
