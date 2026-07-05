@@ -1,0 +1,37 @@
+name: pr unstick
+
+# Strict required checks refuse BEHIND branches, and GitHub's auto-merge
+# never updates them: every fleet-wide merge wave strands the next PR in a
+# green-but-unmergeable deadlock a human had to notice. This controller
+# converges it: after each push to main (and on a safety-net schedule),
+# every open PR that has auto-merge armed and sits BEHIND gets its branch
+# updated, which re-gates it and lets auto-merge finish the job.
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "19 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: pr-unstick
+  cancel-in-progress: false
+
+jobs:
+  unstick:
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh pr list --repo "$GITHUB_REPOSITORY" --state open \
+            --json number,autoMergeRequest,mergeStateStatus \
+            -q '.[] | select(.autoMergeRequest != null and .mergeStateStatus == "BEHIND") | .number' |
+          while read -r n; do
+            gh api "repos/$GITHUB_REPOSITORY/pulls/$n/update-branch" -X PUT >/dev/null &&
+              echo "updated stale branch on PR #$n" || echo "could not update PR #$n"
+          done
