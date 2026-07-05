@@ -3,6 +3,20 @@
 All notable changes to docassert. Format follows [Keep a Changelog](https://keepachangelog.com/);
 versions follow [SemVer](https://semver.org/).
 
+## [1.0.2] — 2026-07-05
+
+Implements spec v0.8.1.
+
+### Fixed
+- **A fresh `docassert new project` scaffold failed its own validation**:
+  the packaged project template's Overview and Scope sections contained
+  only HTML comments, which the required-sections check correctly treats
+  as empty, so the template README's first three commands ended in a
+  blocking failure. Both sections now carry visible TODO placeholder
+  text, matching every other packaged template. Found exercising the
+  starter template's adopter path end to end; regression-tested as the
+  exact command sequence the README promises.
+
 ## [1.0.1] — 2026-07-05
 
 Implements spec v0.8.1.
