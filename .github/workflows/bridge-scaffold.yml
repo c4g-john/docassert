@@ -38,7 +38,11 @@ jobs:
         run: |
           extra=""
           if [ -n "$PROJECT_NUMBER" ] && [ -n "$PROJECTS_TOKEN" ]; then
-            extra="--project-owner c4g-john --project-number $PROJECT_NUMBER --init-board"
+            if GH_TOKEN="$PROJECTS_TOKEN" gh api user --silent; then
+              extra="--project-owner c4g-john --project-number $PROJECT_NUMBER --init-board"
+            else
+              echo "::warning::PROJECTS_TOKEN is invalid or expired; skipping optional board sync"
+            fi
           fi
           # shellcheck disable=SC2086
           docassert bridge scaffold \
