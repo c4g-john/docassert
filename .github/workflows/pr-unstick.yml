@@ -3,10 +3,12 @@ name: pr unstick
 # Strict required checks refuse BEHIND branches, and GitHub's auto-merge
 # never updates them: every fleet-wide merge wave strands the next PR in a
 # green-but-unmergeable deadlock a human had to notice. This controller
-# converges it: after each push to main (or manual dispatch),
+# converges it: after each push to main, same-repo auto-merge enablement, or manual dispatch,
 # every open PR that has auto-merge armed and sits BEHIND gets its branch
 # updated, which re-gates it and lets auto-merge finish the job.
 on:
+  pull_request:
+    types: [auto_merge_enabled]
   push:
     branches: [main]
   workflow_dispatch:
@@ -21,6 +23,7 @@ concurrency:
 
 jobs:
   unstick:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
       - env:
