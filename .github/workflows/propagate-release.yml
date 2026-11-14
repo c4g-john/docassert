@@ -1,0 +1,58 @@
+name: propagate release
+
+# Run only after PyPI publishing succeeds; never block the publishing job.
+# Cross-repository delivery uses the existing token, never a new credential.
+on:
+  workflow_run:
+    workflows: [release]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: propagate-release
+  cancel-in-progress: false
+
+jobs:
+  dispatch:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify package consumers
+        env:
+          GH_TOKEN: ${{ secrets.DISPATCH_TOKEN }}
+        run: |
+          targets=(
+            "pmo-as-code-pipeline:bump-docassert.yml"
+            "pmo-as-code-pmo:bump-docassert.yml"
+            "refuge-for-humans-pmo:bump-docassert.yml"
+            "pmo-as-code-spec:bump-and-mirror.yml"
+            "homebrew-tap:bump.yml"
+          )
+          {
+            echo "## Release propagation"
+            echo "Package publishing has its own workflow. This job only notifies consumers."
+            echo "If automatic delivery fails, use Run workflow at each link below:"
+            for target in "${targets[@]}"; do
+              repo="${target%%:*}"; workflow="${target#*:}"
+              echo "- [$repo / $workflow](https://github.com/c4g-john/$repo/actions/workflows/$workflow)"
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::error::DISPATCH_TOKEN is not configured. Release consumers were not notified; use the manual workflow links in the summary."
+            exit 1
+          fi
+          failed=0
+          for target in "${targets[@]}"; do
+            repo="${target%%:*}"; workflow="${target#*:}"
+            if gh workflow run "$workflow" --repo "c4g-john/$repo" --ref main; then
+              echo "- Dispatched $repo / $workflow" >> "$GITHUB_STEP_SUMMARY"
+            else
+              echo "::error::Delivery failed for $repo / $workflow. Run it manually using the summary link."
+              echo "- FAILED: $repo / $workflow" >> "$GITHUB_STEP_SUMMARY"
+              failed=1
+            fi
+          done
+          exit "$failed"
