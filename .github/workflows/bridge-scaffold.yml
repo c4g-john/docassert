@@ -4,8 +4,8 @@ name: bridge scaffold (PRJ-002-ENG)
 # The governing documents live in c4g-john/pmo-as-code-pmo; this repo's
 # GITHUB_TOKEN can only write issues here, which is the point.
 on:
-  schedule:
-    - cron: "27 */2 * * *"
+  repository_dispatch:
+    types: [bridge-scaffold]
   workflow_dispatch:
 
 concurrency:
