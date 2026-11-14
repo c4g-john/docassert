@@ -3,6 +3,9 @@ name: bridge reconcile (PRJ-002-ENG)
 # Polices this repo's issues against the documented scope of its project.
 # A red run is the alarm.
 on:
+  workflow_run:
+    workflows: ["bridge scaffold (PRJ-002-ENG)"]
+    types: [completed]
   issues:
     types: [opened, reopened, edited, closed]
   repository_dispatch:
@@ -19,7 +22,7 @@ permissions:
 
 jobs:
   reconcile:
-    if: (github.event_name != 'issues' || github.actor != 'github-actions[bot]')
+    if: ((github.event_name != 'issues' || github.actor != 'github-actions[bot]')) && (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
