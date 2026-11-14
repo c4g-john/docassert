@@ -3,6 +3,17 @@
 All notable changes to docassert. Format follows [Keep a Changelog](https://keepachangelog.com/);
 versions follow [SemVer](https://semver.org/).
 
+## [1.0.3] — 2026-11-14
+
+Implements spec v0.8.1. Release-infrastructure maintenance only; no changes
+to CLI behavior, validation rules, or packaged defaults.
+
+### Security
+- Update the PyPI publishing action to v1.14.3, addressing
+  [GHSA-5xjx-3w67-w9x9](https://github.com/pypa/gh-action-pypi-publish/security/advisories/GHSA-5xjx-3w67-w9x9)
+  by removing an untrusted CA from its publishing dependencies.
+  This affects the release pipeline, not an installed docassert dependency.
+
 ## [1.0.2] — 2026-07-05
 
 Implements spec v0.8.1.
